@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShortsManager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ══════════════════════════════════════════════════════════
+       CSS VARIABLES & RESET
+    ══════════════════════════════════════════════════════════ */
+    :root {
+      --bg:           #0D0D1A;
+      --bg-2:         #13132B;
+      --bg-card:      #1A1A35;
+      --bg-card-h:    #21213f;
+      --border:       #2A2A4A;
+      --border-h:     #3D3D6B;
+      --primary:      #7C3AED;
+      --primary-h:    #6D28D9;
+      --primary-dim:  rgba(124,58,237,.14);
+      --primary-glow: rgba(124,58,237,.35);
+      --success:      #10B981;
+      --success-dim:  rgba(16,185,129,.14);
+      --warning:      #F59E0B;
+      --warning-dim:  rgba(245,158,11,.14);
+      --danger:       #EF4444;
+      --danger-dim:   rgba(239,68,68,.14);
+      --twitch:       #9146FF;
+      --twitch-dim:   rgba(145,70,255,.14);
+      --reddit:       #22C55E;
+      --reddit-dim:   rgba(34,197,94,.14);
+      --text:         #F1F5F9;
+      --text-2:       #94A3B8;
+      --text-3:       #64748B;
+      --radius:       12px;
+      --radius-sm:    8px;
+      --sidebar-w:    240px;
+      --transition:   .18s ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; font-family: inherit; }
+    input, textarea, select { font-family: inherit; }
+
+    /* ══════════════════════════════════════════════════════════
+       NOTIFICATION BANNER
+    ══════════════════════════════════════════════════════════ */
+    #banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 24px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .01em;
+      z-index: 100;
+      position: relative;
+    }
+    #banner.danger {
+      display: flex;
+      background: linear-gradient(135deg,#3B0A0A,#5B1111);
+      border-bottom: 1px solid rgba(239,68,68,.4);
+      animation: banner-pulse 2.4s infinite;
+    }
+    #banner.success {
+      display: flex;
+      background: linear-gradient(135deg,#052E1A,#064E30);
+      border-bottom: 1px solid rgba(16,185,129,.4);
+    }
+    @keyframes banner-pulse {
+      0%,100% { opacity:1; }
+      50%      { opacity:.8; }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       LAYOUT
+    ══════════════════════════════════════════════════════════ */
+    .app {
+      display: flex;
+      min-height: calc(100vh - 0px);
+    }
+
+    /* ── Sidebar ───────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 24px 20px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--primary), #A855F7);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+    .logo-text {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      background: linear-gradient(135deg, #E2D9FA, #C4B5FD);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .sidebar-nav {
+      padding: 14px 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 10px 8px 6px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      color: var(--text-2);
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: all var(--transition);
+      cursor: pointer;
+      border: 1px solid transparent;
+      user-select: none;
+    }
+    .nav-item:hover {
+      background: var(--primary-dim);
+      color: var(--text);
+      border-color: var(--primary-dim);
+    }
+    .nav-item.active {
+      background: var(--primary-dim);
+      color: #C4B5FD;
+      border-color: rgba(124,58,237,.3);
+      font-weight: 600;
+    }
+    .nav-item .nav-icon {
+      width: 18px; height: 18px;
+      opacity: .8;
+      flex-shrink: 0;
+    }
+    .nav-item.active .nav-icon { opacity: 1; }
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-3);
+    }
+
+    /* ── Main content ──────────────────────────────────────── */
+    .main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .section { display: none; flex-direction: column; flex: 1; }
+    .section.active { display: flex; }
+
+    .page-header {
+      padding: 28px 32px 0;
+    }
+    .page-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -.03em;
+    }
+    .page-sub {
+      color: var(--text-2);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+    .page-body {
+      padding: 24px 32px 40px;
+      flex: 1;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       CARD
+    ══════════════════════════════════════════════════════════ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: all var(--transition);
+    }
+    .card:hover { border-color: var(--border-h); }
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 6px;
+    }
+    .card-value {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      line-height: 1;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       BUTTONS
+    ══════════════════════════════════════════════════════════ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--primary-h);
+      box-shadow: 0 4px 20px var(--primary-glow);
+      transform: translateY(-1px);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-2);
+      border-color: var(--border);
+    }
+    .btn-ghost:hover {
+      background: var(--bg-card);
+      color: var(--text);
+      border-color: var(--border-h);
+    }
+    .btn-success {
+      background: var(--success);
+      color: #fff;
+    }
+    .btn-success:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border-color: rgba(239,68,68,.3);
+    }
+    .btn-danger:hover {
+      background: var(--danger-dim);
+    }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+    .btn-icon {
+      width: 15px; height: 15px;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       DASHBOARD
+    ══════════════════════════════════════════════════════════ */
+    .greeting-block {
+      margin-bottom: 28px;
+    }
+    .greeting-text {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      line-height: 1.2;
+    }
+    .greeting-date {
+      color: var(--text-2);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-streak .card-value { color: #F59E0B; }
+    .stat-status-ok .card-value { color: var(--success); font-size: 20px; }
+    .stat-status-no .card-value { color: var(--warning); font-size: 20px; }
+
+    .streak-flame { font-size: 28px; }
+
+    .quick-actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .section-heading {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-heading::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .recent-list { display: flex; flex-direction: column; gap: 10px; }
+    .recent-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      transition: all var(--transition);
+    }
+    .recent-item:hover { border-color: var(--border-h); background: var(--bg-card-h); }
+    .source-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .badge-twitch { background: var(--twitch-dim); color: var(--twitch); border: 1px solid rgba(145,70,255,.25); }
+    .badge-reddit { background: var(--reddit-dim);  color: var(--reddit);  border: 1px solid rgba(34,197,94,.25); }
+    .badge-manual { background: var(--primary-dim); color: #C4B5FD; border: 1px solid rgba(124,58,237,.25); }
+    .recent-title  { flex: 1; font-weight: 500; font-size: 13.5px; }
+    .recent-date   { color: var(--text-3); font-size: 12px; flex-shrink: 0; }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      color: var(--text-3);
+      gap: 8px;
+      text-align: center;
+    }
+    .empty-icon { font-size: 40px; opacity: .5; }
+    .empty-text { font-size: 14px; }
+
+    /* ══════════════════════════════════════════════════════════
+       CLIP FINDER
+    ══════════════════════════════════════════════════════════ */
+    .search-hero {
+      background: linear-gradient(135deg, #1A0A35, #1E1040);
+      border: 1px solid rgba(124,58,237,.3);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .search-hero h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .search-hero p {
+      color: var(--text-2);
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .search-spinner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px;
+      color: var(--text-2);
+      font-size: 13px;
+    }
+    .search-spinner.active { display: flex; }
+    .spinner-ring {
+      width: 22px; height: 22px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .clips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .clip-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      transition: all var(--transition);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .clip-card:hover {
+      border-color: var(--border-h);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,0,0,.3);
+    }
+    .clip-source-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .clip-title {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.4;
+      flex: 1;
+    }
+    .clip-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-3);
+      font-size: 12px;
+    }
+    .clip-meta-icon { font-size: 12px; }
+    .clip-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: auto;
+    }
+    .clip-actions a.btn {
+      flex: 1;
+      justify-content: center;
+      font-size: 12px;
+      padding: 7px 12px;
+    }
+    .clip-actions button {
+      flex: 1;
+    }
+    .saved-badge {
+      font-size: 11px;
+      color: var(--success);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Saved library */
+    .library-list { display: flex; flex-direction: column; gap: 10px; }
+    .library-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      transition: all var(--transition);
+    }
+    .library-item:hover { border-color: var(--border-h); }
+    .library-info { flex: 1; min-width: 0; }
+    .library-title {
+      font-size: 13.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .library-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .library-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    /* ══════════════════════════════════════════════════════════
+       SCHEDULER
+    ══════════════════════════════════════════════════════════ */
+    .scheduler-layout {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    .calendar-wrap { flex: 1; min-width: 0; }
+    .schedule-sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Calendar header / nav */
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .cal-nav-btn {
+      width: 34px; height: 34px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-2);
+      transition: all var(--transition);
+    }
+    .cal-nav-btn:hover {
+      background: var(--bg-card-h);
+      color: var(--text);
+      border-color: var(--border-h);
+    }
+    .cal-month-label {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+
+    /* Day-names row */
+    .cal-days-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .cal-day-name {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 6px 0;
+    }
+
+    /* Calendar grid */
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+    .cal-cell {
+      min-height: 78px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-card);
+    }
+    .cal-cell:hover:not(.cal-empty) {
+      border-color: var(--primary);
+      background: var(--primary-dim);
+    }
+    .cal-cell.cal-empty {
+      background: transparent;
+      border-color: transparent;
+      cursor: default;
+      pointer-events: none;
+    }
+    .cal-cell.cal-today {
+      border-color: var(--primary);
+      background: var(--primary-dim);
+    }
+    .cal-cell.cal-posted {
+      border-color: var(--success);
+      background: var(--success-dim);
+    }
+    .cal-cell.cal-scheduled {
+      border-color: rgba(124,58,237,.4);
+      background: rgba(124,58,237,.08);
+    }
+    .cal-num {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-2);
+      line-height: 1;
+      align-self: flex-end;
+    }
+    .cal-cell.cal-today .cal-num { color: #C4B5FD; }
+    .cal-cell.cal-posted .cal-num { color: var(--success); }
+    .cal-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 0;
+    }
+    .cal-check { font-size: 22px; }
+    .cal-clip-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #C4B5FD;
+      text-align: center;
+      line-height: 1.3;
+      word-break: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .cal-add-hint {
+      font-size: 18px;
+      color: var(--text-3);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+    .cal-cell:hover .cal-add-hint { opacity: 1; }
+
+    /* Sidebar widgets */
+    .freq-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .freq-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 12px;
+    }
+    .freq-track {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .freq-step {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      transition: all .4s ease;
+    }
+    .freq-step.active { background: var(--primary); }
+    .freq-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #C4B5FD;
+    }
+    .freq-sub { font-size: 11px; color: var(--text-3); }
+
+    .upcoming-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      flex: 1;
+    }
+    .upcoming-list { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+    .upcoming-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .upcoming-date {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: .03em;
+    }
+    .upcoming-title {
+      font-size: 12.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .upcoming-time { font-size: 11px; color: var(--text-3); }
+
+    /* ══════════════════════════════════════════════════════════
+       MODALS
+    ══════════════════════════════════════════════════════════ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      width: 100%;
+      max-width: 480px;
+      animation: modal-in .2s ease;
+    }
+    @keyframes modal-in {
+      from { opacity:0; transform: scale(.95) translateY(10px); }
+      to   { opacity:1; transform: scale(1)  translateY(0); }
+    }
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+    .modal-close {
+      width: 28px; height: 28px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      border-radius: 6px;
+      color: var(--text-2);
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+      flex-shrink: 0;
+    }
+    .modal-close:hover { background: var(--bg-card-h); color: var(--text); }
+
+    /* Form */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 6px;
+      letter-spacing: .03em;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 13px;
+      color: var(--text);
+      font-size: 13.5px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .form-input:focus { border-color: var(--primary); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+      justify-content: flex-end;
+    }
+    .modal-danger-zone {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════════════════════ */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 999;
+    }
+    .toast {
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all .25s ease;
+      pointer-events: none;
+      border: 1px solid transparent;
+      min-width: 200px;
+      max-width: 340px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast-success { background: #064E3B; border-color: rgba(16,185,129,.4); color: #6EE7B7; }
+    .toast-error   { background: #450A0A; border-color: rgba(239,68,68,.4);  color: #FCA5A5; }
+    .toast-info    { background: #1E1040; border-color: rgba(124,58,237,.4); color: #C4B5FD; }
+
+    /* ══════════════════════════════════════════════════════════
+       DIVIDER / MISC
+    ══════════════════════════════════════════════════════════ */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 28px 0;
+    }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      .scheduler-layout { flex-direction: column; }
+      .schedule-sidebar { width: 100%; }
+    }
+    @media (max-width: 680px) {
+      :root { --sidebar-w: 60px; }
+      .logo-text, .nav-item span, .nav-label, .sidebar-footer { display: none; }
+      .nav-item { justify-content: center; padding: 10px; }
+      .sidebar-logo { justify-content: center; padding: 16px 10px; }
+      .page-body { padding: 16px 16px 32px; }
+      .page-header { padding: 20px 16px 0; }
+      .clips-grid { grid-template-columns: 1fr; }
+      .cal-cell { min-height: 50px; }
+      .cal-clip-title { display: none; }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       STACKED CALENDAR POSTS
+    ══════════════════════════════════════════════════════════ */
+    .cal-day-posts {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 2px 0;
+      overflow: hidden;
+    }
+    .cal-day-post {
+      font-size: 10px;
+      font-weight: 600;
+      color: #C4B5FD;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.35;
+    }
+    .cal-day-post.posted { color: var(--success); }
+    .cal-day-post.more   { color: var(--text-3); font-weight: 400; }
+    .cal-cell.cal-partial {
+      border-color: rgba(16,185,129,.3);
+      background: rgba(16,185,129,.05);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       DAY MODAL POST ITEMS
+    ══════════════════════════════════════════════════════════ */
+    .modal-box-day {
+      max-width: 540px;
+      display: flex;
+      flex-direction: column;
+      max-height: 82vh;
+    }
+    .modal-day-body {
+      overflow-y: auto;
+      flex: 1;
+    }
+    .day-post-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+    }
+    .day-post-item:last-child { margin-bottom: 0; }
+    .day-post-info { flex: 1; min-width: 0; }
+    .day-post-title {
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .day-post-meta {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 3px;
+    }
+    .day-post-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .modal-day-footer {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       DELETE CONFIRMATION PANEL
+    ══════════════════════════════════════════════════════════ */
+    .confirm-delete-panel {
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-top: 8px;
+      width: 100%;
+    }
+    .confirm-delete-msg {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .confirm-delete-warn {
+      font-size: 12px;
+      color: #FCA5A5;
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+    .confirm-delete-btns {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-danger-solid {
+      background: var(--danger);
+      color: #fff;
+      border-color: var(--danger);
+    }
+    .btn-danger-solid:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+     NOTIFICATION BANNER
+════════════════════════════════════════════════════ -->
+<div id="banner"></div>
+
+<!-- ════════════════════════════════════════════════════
+     APP LAYOUT
+════════════════════════════════════════════════════ -->
+<div class="app">
+
+  <!-- ── SIDEBAR ──────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🎬</div>
+      <div class="logo-text">ShortsManager</div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-label">Menu</div>
+
+      <div class="nav-item active" data-section="dashboard" onclick="showSection('dashboard',this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        <span>Dashboard</span>
+      </div>
+
+      <div class="nav-item" data-section="clips" onclick="showSection('clips',this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <span>Find Clips</span>
+      </div>
+
+      <div class="nav-item" data-section="scheduler" onclick="showSection('scheduler',this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span>Scheduler</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">v1.0.0 · Local</div>
+  </nav>
+
+  <!-- ── MAIN CONTENT ──────────────────────────────── -->
+  <main class="main">
+
+    <!-- ════════════ DASHBOARD ════════════ -->
+    <section id="section-dashboard" class="section active">
+      <div class="page-header">
+        <div class="greeting-block">
+          <div class="greeting-text" id="greeting-text">Loading…</div>
+          <div class="greeting-date" id="greeting-date"></div>
+        </div>
+      </div>
+      <div class="page-body">
+
+        <div class="stats-row" id="stats-row">
+          <!-- filled by JS -->
+        </div>
+
+        <div class="quick-actions">
+          <button class="btn btn-primary" onclick="showSection('clips', document.querySelector('[data-section=clips]'))">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Find Clips
+          </button>
+          <button class="btn btn-ghost" onclick="showSection('scheduler', document.querySelector('[data-section=scheduler]'))">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Open Scheduler
+          </button>
+        </div>
+
+        <div class="section-heading">Recent Posts</div>
+        <div id="recent-posts-list">
+          <div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No posts yet</div></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ════════════ CLIP FINDER ════════════ -->
+    <section id="section-clips" class="section">
+      <div class="page-header">
+        <div class="page-title">Find Clips</div>
+        <div class="page-sub">Discover viral clips from Twitch & Reddit</div>
+      </div>
+      <div class="page-body">
+
+        <div class="search-hero">
+          <h2>🔍 Search for Clips</h2>
+          <p>Searches Twitch (top clips by views) and Reddit (gaming subreddits) simultaneously</p>
+          <button class="btn btn-primary" id="search-btn" onclick="startSearch()">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Search for Clips
+          </button>
+          <div class="search-spinner" id="search-spinner">
+            <div class="spinner-ring"></div>
+            Searching Twitch &amp; Reddit…
+          </div>
+        </div>
+
+        <div id="search-results-wrap" style="display:none">
+          <div class="section-heading" id="results-heading">Results</div>
+          <div class="clips-grid" id="clips-grid"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-heading">Saved Library</div>
+        <div id="saved-library">
+          <div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">No saved clips yet — find some above!</div></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ════════════ SCHEDULER ════════════ -->
+    <section id="section-scheduler" class="section">
+      <div class="page-header">
+        <div class="page-title">Scheduler</div>
+        <div class="page-sub">Plan and track your posting calendar</div>
+      </div>
+      <div class="page-body">
+        <div class="scheduler-layout">
+
+          <!-- Calendar -->
+          <div class="calendar-wrap">
+            <div class="cal-nav">
+              <button class="cal-nav-btn" onclick="changeMonth(-1)" title="Previous month">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <span class="cal-month-label" id="cal-label"></span>
+              <button class="cal-nav-btn" onclick="changeMonth(1)" title="Next month">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+            <div class="cal-days-header">
+              <div class="cal-day-name">Sun</div><div class="cal-day-name">Mon</div>
+              <div class="cal-day-name">Tue</div><div class="cal-day-name">Wed</div>
+              <div class="cal-day-name">Thu</div><div class="cal-day-name">Fri</div>
+              <div class="cal-day-name">Sat</div>
+            </div>
+            <div class="cal-grid" id="cal-grid"></div>
+          </div>
+
+          <!-- Sidebar -->
+          <div class="schedule-sidebar">
+
+            <div class="freq-card">
+              <div class="freq-title">Posting Frequency</div>
+              <div class="freq-track">
+                <div class="freq-step" id="freq-1"></div>
+                <div class="freq-step" id="freq-2"></div>
+                <div class="freq-step" id="freq-3"></div>
+              </div>
+              <div class="freq-label" id="freq-label">Weekly</div>
+              <div class="freq-sub" id="freq-sub">Based on your last 30 days</div>
+            </div>
+
+            <div class="upcoming-card">
+              <div class="freq-title">Upcoming Posts</div>
+              <div class="upcoming-list" id="upcoming-list">
+                <div style="color:var(--text-3);font-size:12px;padding:8px 0">No upcoming posts</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     SCHEDULE MODAL
+════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-schedule">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-schedule-title">Schedule Post</div>
+      <button class="modal-close" onclick="cancelSchedule()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Clip Title / Description</label>
+      <input class="form-input" type="text" id="sched-title" placeholder="Enter clip title…" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="sched-date" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Time</label>
+        <input class="form-input" type="time" id="sched-time" value="12:00" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Source</label>
+      <select class="form-input" id="sched-source">
+        <option value="manual">Manual</option>
+        <option value="twitch">Twitch</option>
+        <option value="reddit">Reddit</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cancelSchedule()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitSchedule()">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Schedule Post
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     EDIT POST MODAL
+════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Edit Scheduled Post</div>
+      <button class="modal-close" onclick="cancelEdit()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Clip Title / Description</label>
+      <input class="form-input" type="text" id="edit-title" placeholder="Enter clip title…" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="edit-date" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Time</label>
+        <input class="form-input" type="time" id="edit-time" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Source</label>
+      <select class="form-input" id="edit-source">
+        <option value="manual">Manual</option>
+        <option value="twitch">Twitch</option>
+        <option value="reddit">Reddit</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cancelEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitEdit()">Save Changes</button>
+    </div>
+    <div class="modal-danger-zone">
+      <button class="btn btn-success btn-sm" onclick="markPosted()">
+        ✅ Mark as Posted
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="deletePost()">
+        🗑 Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     DAY POSTS MODAL
+════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-day">
+  <div class="modal-box modal-box-day">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-day-title">Posts</div>
+      <button class="modal-close" onclick="closeModal('modal-day')">✕</button>
+    </div>
+    <div class="modal-day-body">
+      <div id="modal-day-posts"></div>
+    </div>
+    <div class="modal-day-footer">
+      <button class="btn btn-ghost btn-sm" id="modal-day-add-btn">＋ Add Another Post</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ──────────────────────────────────────────────────────────────
+// State
+// ──────────────────────────────────────────────────────────────
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let scheduledPosts  = [];
+let searchPollTimer = null;
+let editingPostId   = null;
+let savedClipIds    = new Set(); // track which search-result clips are already saved
+let dayModalDate     = null;    // date string for the day modal
+let editReturnDate   = null;    // if set, re-open day modal after edit closes
+let scheduleReturnDate = null;  // if set, re-open day modal after schedule closes
+
+// ──────────────────────────────────────────────────────────────
+// Navigation
+// ──────────────────────────────────────────────────────────────
+function showSection(name, navEl) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  document.getElementById('section-' + name).classList.add('active');
+  if (navEl) navEl.classList.add('active');
+
+  if (name === 'dashboard')  loadDashboard();
+  if (name === 'clips')      loadSavedClips();
+  if (name === 'scheduler')  loadScheduler();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Dashboard
+// ──────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const data = await apiFetch('/api/dashboard');
+
+    // Greeting
+    document.getElementById('greeting-text').textContent =
+      `Good ${data.greeting}, Nikola 👋`;
+    document.getElementById('greeting-date').textContent = data.date;
+
+    // Banner
+    const banner = document.getElementById('banner');
+    banner.className = '';
+    banner.textContent = '';
+    if (data.alert) {
+      banner.className = 'danger';
+      banner.innerHTML = '⚠️ Reminder: You haven\'t posted today! It\'s getting late.';
+    } else if (data.posted_today) {
+      banner.className = 'success';
+      banner.innerHTML = '✅ Great work! You\'ve posted today!';
+    }
+
+    // Stats cards
+    const streakCard = `
+      <div class="card stat-streak">
+        <div class="card-title">Posting Streak</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+          <span class="streak-flame">🔥</span>
+          <span class="card-value">${data.streak}</span>
+          <span style="color:var(--text-3);font-size:13px;margin-top:4px">day${data.streak !== 1 ? 's' : ''}</span>
+        </div>
+        <div style="color:var(--text-3);font-size:12px;margin-top:6px">Keep it going!</div>
+      </div>`;
+
+    const statusClass = data.posted_today ? 'stat-status-ok' : 'stat-status-no';
+    const statusCard = `
+      <div class="card ${statusClass}">
+        <div class="card-title">Today's Status</div>
+        <div class="card-value" style="margin-top:6px">
+          ${data.posted_today ? '✅ Posted today' : '⚠️ Not posted yet'}
+        </div>
+        <div style="color:var(--text-3);font-size:12px;margin-top:6px">
+          ${data.posted_today ? 'Great job keeping up the streak!' : 'Schedule something in the Scheduler →'}
+        </div>
+      </div>`;
+
+    document.getElementById('stats-row').innerHTML = streakCard + statusCard;
+
+    // Recent posts
+    const list = document.getElementById('recent-posts-list');
+    if (!data.recent_posts || data.recent_posts.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No posts yet — schedule your first clip!</div></div>`;
+    } else {
+      list.innerHTML = `<div class="recent-list">${data.recent_posts.map(p => `
+        <div class="recent-item">
+          <span class="source-badge badge-${p.source}">${p.source}</span>
+          <span class="recent-title">${escHtml(p.title)}</span>
+          <span class="recent-date">${p.posted_at ? formatPostedAt(p.posted_at) : formatDateDisplay(p.date)}</span>
+        </div>`).join('')}</div>`;
+    }
+  } catch (e) {
+    console.error('Dashboard load error', e);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Clip Finder
+// ──────────────────────────────────────────────────────────────
+async function startSearch() {
+  const btn     = document.getElementById('search-btn');
+  const spinner = document.getElementById('search-spinner');
+
+  btn.disabled = true;
+  btn.style.opacity = '.5';
+  spinner.classList.add('active');
+  document.getElementById('search-results-wrap').style.display = 'none';
+
+  try {
+    await apiFetch('/api/clips/search', {method:'POST'});
+    if (searchPollTimer) clearInterval(searchPollTimer);
+    searchPollTimer = setInterval(pollSearchStatus, 1000);
+  } catch (e) {
+    showToast('Failed to start search', 'error');
+    resetSearchUI();
+  }
+}
+
+async function pollSearchStatus() {
+  const data = await apiFetch('/api/clips/status');
+  if (data.status === 'done') {
+    clearInterval(searchPollTimer);
+    resetSearchUI();
+    renderSearchResults(data.results);
+    await loadSavedClips();
+  } else if (data.status === 'error') {
+    clearInterval(searchPollTimer);
+    resetSearchUI();
+    showToast('Search failed: ' + (data.error || 'Unknown error'), 'error');
+  }
+}
+
+function resetSearchUI() {
+  document.getElementById('search-btn').disabled = false;
+  document.getElementById('search-btn').style.opacity = '1';
+  document.getElementById('search-spinner').classList.remove('active');
+}
+
+function renderSearchResults(clips) {
+  if (!clips || clips.length === 0) {
+    showToast('No clips found', 'info');
+    return;
+  }
+  const wrap = document.getElementById('search-results-wrap');
+  const grid = document.getElementById('clips-grid');
+  document.getElementById('results-heading').textContent =
+    `Results (${clips.length} clips found)`;
+
+  grid.innerHTML = clips.map(c => {
+    const isTwitch = c.source === 'twitch';
+    const badgeClass = isTwitch ? 'badge-twitch' : 'badge-reddit';
+    const meta = isTwitch
+      ? `<span class="clip-meta-icon">👁</span> ${fmtViews(c.view_count)} views · ${escHtml(c.broadcaster || '')}`
+      : `<span class="clip-meta-icon">🤝</span> r/${escHtml(c.subreddit || c.game_name || '')}`;
+    const alreadySaved = savedClipIds.has(c.id);
+    return `
+      <div class="clip-card" id="clip-${c.id}">
+        <div class="clip-source-row">
+          <span class="source-badge ${badgeClass}">${c.source}</span>
+        </div>
+        <div class="clip-title">${escHtml(c.title)}</div>
+        <div class="clip-meta">${meta}</div>
+        <div class="clip-actions">
+          <a class="btn btn-ghost btn-sm" href="${escHtml(c.url)}" target="_blank" rel="noreferrer">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Preview
+          </a>
+          ${alreadySaved
+            ? `<span class="saved-badge">✅ Saved</span>`
+            : `<button class="btn btn-primary btn-sm" onclick="saveClip(${escAttr(c)})">
+                 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                 Save to Library
+               </button>`}
+        </div>
+      </div>`;
+  }).join('');
+
+  wrap.style.display = 'block';
+  showToast(`Found ${clips.length} clips!`, 'success');
+}
+
+async function saveClip(clip) {
+  try {
+    await apiFetch('/api/clips/saved', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(clip)
+    });
+    // Update the card UI
+    const card = document.getElementById('clip-' + clip.id);
+    if (card) {
+      const actionsDiv = card.querySelector('.clip-actions');
+      const btn = actionsDiv.querySelector('button');
+      if (btn) btn.replaceWith(Object.assign(document.createElement('span'), {
+        className: 'saved-badge', textContent: '✅ Saved'
+      }));
+    }
+    savedClipIds.add(clip.id);
+    await loadSavedClips();
+    showToast('Clip saved to library!', 'success');
+  } catch (e) {
+    showToast('Failed to save clip', 'error');
+  }
+}
+
+async function loadSavedClips() {
+  try {
+    const clips = await apiFetch('/api/clips/saved');
+    renderSavedLibrary(clips);
+    // Update savedClipIds set (matching by title+source since IDs differ between search and saved)
+    savedClipIds = new Set(clips.map(c => c.id));
+  } catch (e) {
+    console.error('Load saved clips error', e);
+  }
+}
+
+function renderSavedLibrary(clips) {
+  const el = document.getElementById('saved-library');
+  if (!clips || clips.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">No saved clips yet — find some above!</div></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="library-list">` + clips.map(c => `
+    <div class="library-item">
+      <span class="source-badge badge-${c.source || 'manual'}">${c.source || 'clip'}</span>
+      <div class="library-info">
+        <div class="library-title">${escHtml(c.title)}</div>
+        <div class="library-sub">
+          ${c.view_count ? fmtViews(c.view_count) + ' views · ' : ''}
+          Saved ${timeAgo(c.saved_at)}
+        </div>
+      </div>
+      <div class="library-actions">
+        <button class="btn btn-primary btn-sm" onclick="openScheduleFromClip(${escAttr(c)})">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Schedule
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="removeSavedClip('${c.id}')">Remove</button>
+      </div>
+    </div>`).join('') + `</div>`;
+}
+
+async function removeSavedClip(id) {
+  await apiFetch('/api/clips/saved/' + id, {method:'DELETE'});
+  await loadSavedClips();
+  showToast('Clip removed', 'info');
+}
+
+function openScheduleFromClip(clip) {
+  // Switch to scheduler section
+  showSection('scheduler', document.querySelector('[data-section=scheduler]'));
+  // Open modal pre-filled
+  setTimeout(() => openScheduleModal(todayStr(), clip), 300);
+}
+
+// ──────────────────────────────────────────────────────────────
+// Scheduler / Calendar
+// ──────────────────────────────────────────────────────────────
+async function loadScheduler() {
+  scheduledPosts = await apiFetch('/api/schedule');
+  renderCalendar();
+  renderUpcoming();
+  updateFrequency();
+}
+
+function renderCalendar() {
+  const label = document.getElementById('cal-label');
+  const grid  = document.getElementById('cal-grid');
+  const months = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+  label.textContent = `${months[calMonth]} ${calYear}`;
+
+  const today = new Date();
+  const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  // Build lookup by date string
+  const postsByDate = {};
+  for (const p of scheduledPosts) {
+    if (!postsByDate[p.date]) postsByDate[p.date] = [];
+    postsByDate[p.date].push(p);
+  }
+
+  let html = '';
+
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div class="cal-cell cal-empty"></div>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = (
+      today.getFullYear() === calYear &&
+      today.getMonth()    === calMonth &&
+      today.getDate()     === d
+    );
+
+    const dayPosts = postsByDate[dateStr] || [];
+    const postedCount   = dayPosts.filter(p => p.posted).length;
+    const unpostedCount = dayPosts.filter(p => !p.posted).length;
+    const allPosted     = dayPosts.length > 0 && postedCount === dayPosts.length;
+    const somePosted    = postedCount > 0 && unpostedCount > 0;
+
+    let cellClass = 'cal-cell';
+    if (isToday)     cellClass += ' cal-today';
+    if (allPosted)   cellClass += ' cal-posted';
+    else if (somePosted)  cellClass += ' cal-partial';
+    else if (unpostedCount > 0) cellClass += ' cal-scheduled';
+
+    let content = '';
+    if (dayPosts.length > 0) {
+      const MAX_VISIBLE = 2;
+      let postsHtml = '';
+      dayPosts.slice(0, MAX_VISIBLE).forEach(p => {
+        const cls = p.posted ? 'cal-day-post posted' : 'cal-day-post';
+        const prefix = p.posted ? '✅ ' : '';
+        postsHtml += `<div class="${cls}">${prefix}${escHtml(p.title)}</div>`;
+      });
+      if (dayPosts.length > MAX_VISIBLE) {
+        postsHtml += `<div class="cal-day-post more">+ ${dayPosts.length - MAX_VISIBLE} more</div>`;
+      }
+      content = `<div class="cal-day-posts">${postsHtml}</div>`;
+    } else {
+      content = `<div class="cal-content"><span class="cal-add-hint">＋</span></div>`;
+    }
+
+    const clickFn = dayPosts.length > 0
+      ? `openDayModal('${dateStr}')`
+      : `openScheduleModal('${dateStr}', null)`;
+
+    html += `
+      <div class="${cellClass}" onclick="${clickFn}" title="${dateStr}">
+        ${content}
+        <div class="cal-num">${d}</div>
+      </div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Day Modal
+// ──────────────────────────────────────────────────────────────
+function openDayModal(dateStr) {
+  dayModalDate = dateStr;
+  document.getElementById('modal-day-add-btn').onclick = () => openScheduleModalFromDay(dateStr);
+  renderDayModal();
+  openModal('modal-day');
+}
+
+function renderDayModal() {
+  if (!dayModalDate) return;
+  const posts = scheduledPosts.filter(p => p.date === dayModalDate);
+  document.getElementById('modal-day-title').textContent =
+    `Posts for ${formatDateDisplay(dayModalDate)}`;
+
+  const el = document.getElementById('modal-day-posts');
+  if (posts.length === 0) {
+    el.innerHTML = `<div style="color:var(--text-3);font-size:13px;padding:8px 0">No posts scheduled for this day.</div>`;
+    return;
+  }
+
+  el.innerHTML = posts.map(p => `
+    <div class="day-post-item" id="day-post-${p.id}">
+      <div class="day-post-info">
+        <div class="day-post-title">${p.posted ? '✅ ' : ''}${escHtml(p.title)}</div>
+        <div class="day-post-meta">🕐 ${p.time || '—'} · ${p.source}${p.posted && p.posted_at ? ' · Posted ' + formatPostedAt(p.posted_at) : ''}</div>
+      </div>
+      <div class="day-post-actions">
+        ${!p.posted ? `
+          <button class="btn btn-success btn-sm" onclick="markPostedFromDay('${p.id}')">✅ Mark Posted</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditFromDay(${escAttr(p)})">Edit</button>
+        ` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deletePostFromDay('${p.id}', ${!!p.posted})">🗑 Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+async function markPostedFromDay(postId) {
+  await apiFetch('/api/schedule/' + postId + '/posted', {method:'POST'});
+  await loadScheduler();
+  await loadDashboard();
+  showToast('Marked as posted! ✅', 'success');
+  renderDayModal();
+}
+
+function deletePostFromDay(postId, isPosted) {
+  const item = document.getElementById('day-post-' + postId);
+  if (!item) return;
+
+  // Hide the action buttons
+  const actions = item.querySelector('.day-post-actions');
+  if (actions) actions.style.display = 'none';
+
+  // Remove any previously injected panel
+  const existing = item.querySelector('.confirm-delete-panel');
+  if (existing) existing.remove();
+
+  let html = `<div class="confirm-delete-panel">
+    <div class="confirm-delete-msg">Are you sure you want to delete this post? This cannot be undone.</div>`;
+  if (isPosted) {
+    html += `<div class="confirm-delete-warn">This post has already been marked as posted. Deleting it will remove it from your history and may affect your posting streak.</div>`;
+  }
+  html += `<div class="confirm-delete-btns">
+      <button class="btn btn-danger-solid btn-sm" onclick="executeDeleteFromDay('${postId}')">Yes, Delete</button>
+      <button class="btn btn-ghost btn-sm" onclick="cancelDeleteFromDay('${postId}')">Cancel</button>
+    </div>
+  </div>`;
+
+  item.insertAdjacentHTML('beforeend', html);
+}
+
+function cancelDeleteFromDay(postId) {
+  const item = document.getElementById('day-post-' + postId);
+  if (!item) return;
+  const panel = item.querySelector('.confirm-delete-panel');
+  if (panel) panel.remove();
+  const actions = item.querySelector('.day-post-actions');
+  if (actions) actions.style.display = '';
+}
+
+async function executeDeleteFromDay(postId) {
+  await apiFetch('/api/schedule/' + postId, {method:'DELETE'});
+  closeModal('modal-day');
+  await loadScheduler();
+  await loadDashboard();
+  showToast('Post deleted successfully', 'success');
+}
+
+function openEditFromDay(post) {
+  editReturnDate = post.date;
+  closeModal('modal-day');
+  openEditModal(post);
+}
+
+function openScheduleModalFromDay(dateStr) {
+  scheduleReturnDate = dateStr;
+  closeModal('modal-day');
+  openScheduleModal(dateStr, null);
+}
+
+function renderUpcoming() {
+  const today = todayStr();
+  const upcoming = scheduledPosts
+    .filter(p => !p.posted && p.date >= today)
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+    .slice(0, 8);
+
+  const el = document.getElementById('upcoming-list');
+  if (upcoming.length === 0) {
+    el.innerHTML = `<div style="color:var(--text-3);font-size:12px;padding:8px 0">No upcoming posts scheduled</div>`;
+    return;
+  }
+  el.innerHTML = upcoming.map(p => `
+    <div class="upcoming-item" onclick="openEditModal(${escAttr(p)})" style="cursor:pointer">
+      <div class="upcoming-date">${formatDateDisplay(p.date)}</div>
+      <div class="upcoming-title">${escHtml(p.title)}</div>
+      <div class="upcoming-time">🕐 ${p.time || '—'} · ${p.source}</div>
+    </div>`).join('');
+}
+
+function updateFrequency() {
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today - 30 * 864e5);
+  const start = thirtyDaysAgo.toISOString().slice(0,10);
+
+  const postedDates = new Set(
+    scheduledPosts
+      .filter(p => p.posted && p.date >= start)
+      .map(p => p.date)
+  );
+  const count = postedDates.size;
+
+  let label, sub, steps;
+  if (count >= 24) {
+    label = 'Daily';
+    sub = `${count} posts in the last 30 days`;
+    steps = 3;
+  } else if (count >= 10) {
+    label = 'Every 2 Days';
+    sub = `${count} posts in the last 30 days`;
+    steps = 2;
+  } else {
+    label = 'Weekly';
+    sub = `${count} post${count !== 1 ? 's' : ''} in the last 30 days`;
+    steps = 1;
+  }
+
+  document.getElementById('freq-label').textContent = label;
+  document.getElementById('freq-sub').textContent = sub;
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById('freq-' + i).classList.toggle('active', i <= steps);
+  }
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Schedule Modal
+// ──────────────────────────────────────────────────────────────
+function openScheduleModal(dateStr, clipData) {
+  document.getElementById('sched-date').value  = dateStr || todayStr();
+  document.getElementById('sched-time').value  = '12:00';
+  document.getElementById('sched-title').value = clipData ? clipData.title : '';
+  document.getElementById('sched-source').value = clipData ? (clipData.source || 'manual') : 'manual';
+  document.getElementById('modal-schedule-title').textContent =
+    dateStr ? `Schedule for ${formatDateDisplay(dateStr)}` : 'Schedule Post';
+  openModal('modal-schedule');
+}
+
+async function submitSchedule() {
+  const title = document.getElementById('sched-title').value.trim();
+  const date  = document.getElementById('sched-date').value;
+  const time  = document.getElementById('sched-time').value;
+  const source = document.getElementById('sched-source').value;
+
+  if (!title) { showToast('Please enter a clip title', 'error'); return; }
+  if (!date)  { showToast('Please select a date', 'error'); return; }
+
+  try {
+    await apiFetch('/api/schedule', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({title, date, time, source})
+    });
+    closeModal('modal-schedule');
+    await loadScheduler();
+    showToast('Post scheduled!', 'success');
+    if (scheduleReturnDate) {
+      const d = scheduleReturnDate;
+      scheduleReturnDate = null;
+      openDayModal(d);
+    }
+  } catch (e) {
+    showToast('Failed to save post', 'error');
+  }
+}
+
+function cancelSchedule() {
+  const ret = scheduleReturnDate;
+  scheduleReturnDate = null;
+  closeModal('modal-schedule');
+  if (ret) openDayModal(ret);
+}
+
+// ──────────────────────────────────────────────────────────────
+// Edit Modal
+// ──────────────────────────────────────────────────────────────
+function openEditModal(post) {
+  editingPostId = post.id;
+  document.getElementById('edit-title').value  = post.title;
+  document.getElementById('edit-date').value   = post.date;
+  document.getElementById('edit-time').value   = post.time || '12:00';
+  document.getElementById('edit-source').value = post.source || 'manual';
+  // Clean up any leftover confirm panel from a previous open
+  const panel = document.getElementById('edit-delete-confirm');
+  if (panel) panel.remove();
+  const dangerZone = document.querySelector('#modal-edit .modal-danger-zone');
+  if (dangerZone) dangerZone.style.display = '';
+  openModal('modal-edit');
+}
+
+async function submitEdit() {
+  const title  = document.getElementById('edit-title').value.trim();
+  const date   = document.getElementById('edit-date').value;
+  const time   = document.getElementById('edit-time').value;
+  const source = document.getElementById('edit-source').value;
+
+  if (!title) { showToast('Title is required', 'error'); return; }
+
+  await apiFetch('/api/schedule/' + editingPostId, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({title, date, time, source})
+  });
+  closeModal('modal-edit');
+  await loadScheduler();
+  showToast('Post updated!', 'success');
+  const ret = editReturnDate;
+  editReturnDate = null;
+  if (ret) openDayModal(date || ret);
+}
+
+function cancelEdit() {
+  const ret = editReturnDate;
+  editReturnDate = null;
+  cancelDeletePost(); // restore danger zone if confirm was showing
+  closeModal('modal-edit');
+  if (ret) openDayModal(ret);
+}
+
+async function markPosted() {
+  await apiFetch('/api/schedule/' + editingPostId + '/posted', {method:'POST'});
+  closeModal('modal-edit');
+  await loadScheduler();
+  await loadDashboard();
+  showToast('Marked as posted! ✅', 'success');
+  const ret = editReturnDate;
+  editReturnDate = null;
+  if (ret) openDayModal(ret);
+}
+
+function deletePost() {
+  const post = scheduledPosts.find(p => p.id === editingPostId);
+  const isPosted = post && post.posted;
+
+  const dangerZone = document.querySelector('#modal-edit .modal-danger-zone');
+  const existing = document.getElementById('edit-delete-confirm');
+  if (existing) existing.remove();
+
+  let html = `<div id="edit-delete-confirm" class="confirm-delete-panel">
+    <div class="confirm-delete-msg">Are you sure you want to delete this post? This cannot be undone.</div>`;
+  if (isPosted) {
+    html += `<div class="confirm-delete-warn">This post has already been marked as posted. Deleting it will remove it from your history and may affect your posting streak.</div>`;
+  }
+  html += `<div class="confirm-delete-btns">
+      <button class="btn btn-danger-solid btn-sm" onclick="executeDeletePost()">Yes, Delete</button>
+      <button class="btn btn-ghost btn-sm" onclick="cancelDeletePost()">Cancel</button>
+    </div>
+  </div>`;
+
+  if (dangerZone) {
+    dangerZone.style.display = 'none';
+    dangerZone.insertAdjacentHTML('afterend', html);
+  }
+}
+
+function cancelDeletePost() {
+  const panel = document.getElementById('edit-delete-confirm');
+  if (panel) panel.remove();
+  const dangerZone = document.querySelector('#modal-edit .modal-danger-zone');
+  if (dangerZone) dangerZone.style.display = '';
+}
+
+async function executeDeletePost() {
+  await apiFetch('/api/schedule/' + editingPostId, {method:'DELETE'});
+  closeModal('modal-edit');
+  await loadScheduler();
+  await loadDashboard();
+  showToast('Post deleted successfully', 'success');
+  const ret = editReturnDate;
+  editReturnDate = null;
+  if (ret && scheduledPosts.some(p => p.date === ret)) {
+    openDayModal(ret);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Modal helpers
+// ──────────────────────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+// Close on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('active');
+  });
+});
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+  }
+});
+
+// ──────────────────────────────────────────────────────────────
+// Toast
+// ──────────────────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => el.classList.add('show'));
+  });
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 3200);
+}
+
+// ──────────────────────────────────────────────────────────────
+// API helper
+// ──────────────────────────────────────────────────────────────
+async function apiFetch(url, options) {
+  const res = await fetch(url, options);
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Utility
+// ──────────────────────────────────────────────────────────────
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(obj) {
+  const json = JSON.stringify(obj);
+  return "'" + json.replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
+}
+
+function fmtViews(n) {
+  if (n == null) return '';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return String(n);
+}
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+}
+
+function timeAgo(isoStr) {
+  if (!isoStr) return '';
+  const diff = (Date.now() - new Date(isoStr)) / 1000;
+  if (diff < 60)   return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400)return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function formatPostedAt(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  return d.toLocaleString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+
+// ──────────────────────────────────────────────────────────────
+// Boot
+// ──────────────────────────────────────────────────────────────
+loadDashboard();
+loadSavedClips();
+</script>
+</body>
+</html>

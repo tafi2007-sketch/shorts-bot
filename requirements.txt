@@ -1,0 +1,23 @@
+# requirements.txt
+# ---------------------------------------------------------------
+# Install everything at once with:
+#   pip install -r requirements.txt
+# ---------------------------------------------------------------
+
+# flask — web framework for ShortsManager (app.py)
+flask
+
+# requests — fetches Reddit's public JSON endpoints in find_clips.py
+requests
+
+# python-dotenv — loads settings from a .env file
+python-dotenv
+
+# yt-dlp — downloads videos in download_clips.py
+yt-dlp
+
+# colorama — cross-platform terminal colors used in find_clips.py
+colorama
+
+# anthropic — Claude AI API client used in generate_metadata.py
+anthropic
