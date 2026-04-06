@@ -65,7 +65,7 @@ echo -e "${WHITE}========================================${RESET}"
 echo ""
 
 echo -e "${BLUE}⏳ Syncing with GitHub...${RESET}"
-if git pull origin master --no-rebase >/dev/null 2>&1; then
+if git pull origin main --no-rebase >/dev/null 2>&1; then
     echo -e "${GREEN}✅ Synced successfully - you have the latest version${RESET}"
 else
     echo ""
@@ -97,4 +97,7 @@ echo -e "${GREEN}✅ Ready! Opening ShortsManager...${RESET}"
 echo ""
 
 # Run the app (browser opens automatically)
-python3 app.py
+python3 app.py &
+sleep 3
+open -a Safari http://127.0.0.1:5000
+wait
