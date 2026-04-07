@@ -96,8 +96,11 @@ pip3 install -r requirements.txt -q
 echo -e "${GREEN}✅ Ready! Opening ShortsManager...${RESET}"
 echo ""
 
-# Run the app (browser opens automatically)
-# Run the app (browser opens automatically)
+# Kill any existing Flask instance on port 5000
+lsof -ti:5000 | xargs kill -9 2>/dev/null
+sleep 1
+
+# Run the app
 python3 app.py &
 APP_PID=$!
 sleep 3
