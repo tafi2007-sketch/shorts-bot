@@ -31,33 +31,82 @@ colorama_init(autoreset=True)
 # CONSTANTS
 # ---------------------------------------------------------------
 
-OUTPUT_FILE = "chosen_clips.json"
+OUTPUT_FILE     = "chosen_clips.json"
+USED_CLIPS_FILE = "used_clips.json"
 MIN_TWITCH_VIEWS = 10_000
 
 REDDIT_SUBREDDITS = [
+    # General Gaming
     "gaming",
+    "LivestreamFail",
+    "GamersBeingBros",
+    "Unexpected",
+    # Multiplayer/FPS
+    "FortniteBR",
+    "Overwatch",
+    "leagueoflegends",
+    "valorant",
+    "apexlegends",
+    "CODWarzone",
+    "RocketLeague",
+    "GlobalOffensive",
+    "Competitiveoverwatch",
+    "smashbros",
+    "Battlefield",
+    "Rainbow6",
+    "halo",
+    "destiny2",
+    "Warframe",
+    # Sandbox/Casual
     "Minecraft",
     "minecraftfunny",
     "RobloxFunny",
     "roblox",
     "GrandTheftAutoV",
-    "LivestreamFail",
-    "FortniteBR",
-    "Overwatch",
-    "LeagueOfLegends",
-    "apexlegends",
-    "Unexpected",
-    "HoldMyBeer",
-    "ThereWasAnAttempt",
-    "WatchPeopleDieInside",
-    "GamersBeingBros",
-    "nextfuckinglevel",
+    "gtaonline",
+    "NoMansSkyTheGame",
+    "Terraria",
+    "StardewValley",
+    "AnimalCrossing",
+    # Highlight/Clip Focused
+    "perfectlycutscreams",
     "softwaregore",
-    "valorant",
-    "CODWarzone",
+    "techsupportgore",
+    "oops",
+    "killthelive",
+    # Streamer Clips
+    "TwitchMoments",
+    # RPG/Adventure
+    "Eldenring",
+    "skyrim",
+    "cyberpunkgame",
+    "witcher",
+    "Genshin_Impact",
+    "HonkaiStarRail",
+    "RedDeadRedemption",
+    "darksouls",
+    # Sports Games
+    "FIFA",
+    "NBA2k",
+    "EAFC",
 ]
 
 VIDEO_DOMAINS = ["v.redd.it", "clips.twitch.tv"]
+
+NON_GAMING_CATEGORIES = {
+    "just chatting",
+    "irl",
+    "music",
+    "art",
+    "pools, hot tubs, and beaches",
+    "sports",
+    "talk shows & podcasts",
+    "asmr",
+    "travel & outdoors",
+    "food & drink",
+    "gambling",
+    "slots",
+}
 
 HEADERS = {
     "User-Agent": (
@@ -70,6 +119,49 @@ HEADERS = {
 SPINNER_CHARS = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 _ATOM_NS = "http://www.w3.org/2005/Atom"
+
+
+# ---------------------------------------------------------------
+# USED CLIPS TRACKING
+# ---------------------------------------------------------------
+
+def load_used_clips() -> set[str]:
+    """Load used clip URLs from used_clips.json. Returns a set of URLs."""
+    if not os.path.exists(USED_CLIPS_FILE):
+        return set()
+    try:
+        with open(USED_CLIPS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {entry["url"] for entry in data if "url" in entry}
+    except Exception:
+        return set()
+
+
+def save_used_clips(chosen: list):
+    """Append newly chosen clips to used_clips.json."""
+    existing = []
+    if os.path.exists(USED_CLIPS_FILE):
+        try:
+            with open(USED_CLIPS_FILE, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+        except Exception:
+            existing = []
+
+    existing_urls = {e["url"] for e in existing if "url" in e}
+    date_used = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    for clip in chosen:
+        if clip["url"] not in existing_urls:
+            existing.append({
+                "url":       clip["url"],
+                "title":     clip["title"],
+                "source":    clip["source"],
+                "date_used": date_used,
+            })
+            existing_urls.add(clip["url"])
+
+    with open(USED_CLIPS_FILE, "w", encoding="utf-8") as f:
+        json.dump(existing, f, indent=2, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------
@@ -205,18 +297,48 @@ def get_twitch_token() -> str | None:
         return None
 
 
-def collect_twitch_clips() -> list:
-    client_id = os.getenv("TWITCH_CLIENT_ID")
-    token = get_twitch_token()
-    if not token or not client_id:
-        return []
+HARDCODED_GAMES = {
+    "27471":      "Minecraft",
+    "493244":     "Roblox",
+    "32982":      "Grand Theft Auto V",
+    "33214":      "Fortnite",
+    "21779":      "League of Legends",
+    "516575":     "Valorant",
+    "511224":     "Apex Legends",
+    "512710":     "Call of Duty: Warzone",
+    "515025":     "Overwatch 2",
+    "1745202096": "EA Sports FC",
+}
 
-    three_months_ago = (datetime.utcnow() - timedelta(days=90)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
+def get_top_games(client_id: str, token: str) -> dict[str, str]:
+    """Fetch top 20 games from Twitch. Returns {game_id: game_name}."""
     try:
         resp = requests.get(
-            "https://api.twitch.tv/helix/clips",
-            params={"first": 50, "language": "en", "started_at": three_months_ago},
+            "https://api.twitch.tv/helix/games/top?first=20",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Client-Id":     client_id,
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return {g["id"]: g["name"] for g in resp.json().get("data", [])}
+    except Exception as e:
+        err(f"Twitch top games fetch failed: {e}")
+        return {}
+
+
+def fetch_clips_for_game(game_id: str, game_name: str, client_id: str, token: str,
+                          three_months_ago: str) -> list:
+    """Fetch up to 10 clips for a single game."""
+    url = (
+        f"https://api.twitch.tv/helix/clips"
+        f"?game_id={game_id}&first=10&language=en&started_at={three_months_ago}"
+    )
+    try:
+        resp = requests.get(
+            url,
             headers={
                 "Authorization": f"Bearer {token}",
                 "Client-Id":     client_id,
@@ -225,27 +347,75 @@ def collect_twitch_clips() -> list:
         )
         resp.raise_for_status()
         raw = resp.json().get("data", [])
-    except Exception as e:
-        err(f"Twitch clips fetch failed: {e}")
+    except Exception:
         return []
 
     clips = []
     for c in raw:
-        url = c.get("url", "")
+        clip_url = c.get("url", "")
         views = c.get("view_count", 0)
-        if not url or views < MIN_TWITCH_VIEWS:
+        if not clip_url or views < MIN_TWITCH_VIEWS:
             continue
         clips.append({
             "source":      "twitch",
-            "game_name":   c.get("game_id", ""),   # filled with name below if available
+            "game_name":   game_name,
             "title":       c.get("title", "No title"),
-            "url":         url,
+            "url":         clip_url,
             "view_count":  views,
             "broadcaster": c.get("broadcaster_name", ""),
             "subreddit":   None,
         })
+    return clips
+
+
+def collect_twitch_clips() -> list:
+    client_id = os.getenv("TWITCH_CLIENT_ID")
+    token = get_twitch_token()
+    if not token or not client_id:
+        return []
+
+    three_months_ago = (
+        datetime.now(timezone.utc) - timedelta(days=14)
+    ).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    # Step 1: get current top 20 games
+    top_games = get_top_games(client_id, token)
+
+    # Step 2 & 3: merge with hardcoded list (top_games wins on name if overlap)
+    combined_games: dict[str, str] = {**HARDCODED_GAMES, **top_games}
+
+    # Step 4: fetch clips for all games simultaneously
+    results: dict[str, list] = {}
+
+    def worker(gid: str, gname: str):
+        results[gid] = fetch_clips_for_game(gid, gname, client_id, token, three_months_ago)
+
+    threads = [
+        threading.Thread(target=worker, args=(gid, gname), daemon=True)
+        for gid, gname in combined_games.items()
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    # Combine, deduplicate by URL, sort by view_count
+    seen_urls: set[str] = set()
+    clips = []
+    for game_clips in results.values():
+        for clip in game_clips:
+            if clip["url"] not in seen_urls:
+                seen_urls.add(clip["url"])
+                clips.append(clip)
 
     clips.sort(key=lambda c: c["view_count"], reverse=True)
+
+    # Filter out non-gaming categories
+    clips = [
+        c for c in clips
+        if c.get("game_name") and c["game_name"].lower() not in NON_GAMING_CATEGORIES
+    ]
+
     return clips
 
 
@@ -275,8 +445,8 @@ def _extract_video_url(text: str) -> str | None:
 
 
 def fetch_reddit_rss(subreddit: str) -> list:
-    feed_url = f"https://www.reddit.com/r/{subreddit}/top.rss?t=month"
-    three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
+    feed_url = f"https://www.reddit.com/r/{subreddit}/top.rss?t=week"
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
     try:
         resp = requests.get(feed_url, headers=HEADERS, timeout=15)
@@ -289,11 +459,11 @@ def fetch_reddit_rss(subreddit: str) -> list:
 
         clips = []
         for entry in root.findall(f"{{{_ATOM_NS}}}entry"):
-            updated_el = entry.find(f"{{{_ATOM_NS}}}updated")
-            if updated_el is not None and updated_el.text:
+            published_el = entry.find(f"{{{_ATOM_NS}}}published")
+            if published_el is not None and published_el.text:
                 try:
-                    post_date = datetime.fromisoformat(updated_el.text.replace("Z", "+00:00"))
-                    if post_date < three_months_ago:
+                    post_date = datetime.fromisoformat(published_el.text.replace("Z", "+00:00"))
+                    if post_date < seven_days_ago:
                         continue
                 except ValueError:
                     pass
@@ -405,7 +575,7 @@ def collect_all_clips() -> tuple[list, list]:
 # DISPLAY
 # ---------------------------------------------------------------
 
-def display_clips(twitch_clips: list, reddit_clips: list) -> list:
+def display_clips(twitch_clips: list, reddit_clips: list, used_urls: set[str]) -> list:
     """Render all clip cards and return the combined ordered list."""
     all_clips = twitch_clips + reddit_clips
 
@@ -416,22 +586,28 @@ def display_clips(twitch_clips: list, reddit_clips: list) -> list:
     print_summary(len(twitch_clips), len(reddit_clips))
 
     for i, clip in enumerate(all_clips, start=1):
+        already_used = clip["url"] in used_urls
         if clip["source"] == "twitch":
             views_str = f"{clip['view_count']:,}"
-            print_card([
-                (Fore.MAGENTA + Style.BRIGHT,  f"[{i}] 🟣 TWITCH"),
-                (Fore.YELLOW  + Style.BRIGHT,  f"👁  {views_str} views"),
-                (Fore.WHITE   + Style.BRIGHT,  f"📺 Streamer: {clip['broadcaster']}"),
-                (Fore.WHITE   + Style.BRIGHT,  f"📝 \"{clip['title']}\""),
-                (Fore.WHITE   + Style.DIM,     f"🔗 {clip['url']}"),
-            ])
+            lines = [
+                (Fore.MAGENTA + Style.BRIGHT, f"[{i}] 🟣 TWITCH • {clip['game_name']}"),
+                (Fore.YELLOW  + Style.BRIGHT, f"👁  {views_str} views"),
+                (Fore.WHITE   + Style.BRIGHT, f"📺 Streamer: {clip['broadcaster']}"),
+                (Fore.WHITE   + Style.BRIGHT, f"📝 \"{clip['title']}\""),
+                (Fore.WHITE   + Style.DIM,    f"🔗 {clip['url']}"),
+            ]
+            if already_used:
+                lines.insert(1, (Fore.YELLOW + Style.BRIGHT, f"⚠️  ALREADY USED"))
         else:
             sub = clip["subreddit"] or clip["game_name"]
-            print_card([
-                (Fore.GREEN  + Style.BRIGHT, f"[{i}] 🟢 REDDIT • r/{sub}"),
-                (Fore.WHITE  + Style.BRIGHT, f"📝 \"{clip['title']}\""),
-                (Fore.WHITE  + Style.DIM,    f"🔗 {clip['url']}"),
-            ])
+            lines = [
+                (Fore.GREEN + Style.BRIGHT, f"[{i}] 🟢 REDDIT • r/{sub}"),
+                (Fore.WHITE + Style.BRIGHT, f"📝 \"{clip['title']}\""),
+                (Fore.WHITE + Style.DIM,    f"🔗 {clip['url']}"),
+            ]
+            if already_used:
+                lines.insert(1, (Fore.YELLOW + Style.BRIGHT, f"⚠️  ALREADY USED"))
+        print_card(lines)
         print()
 
     return all_clips
@@ -501,6 +677,8 @@ def save_chosen_clips(chosen: list):
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
+    save_used_clips(chosen)
+
     print(
         Fore.GREEN + Style.BRIGHT
         + f"\n  ✅ Saved {len(chosen)} clip{'s' if len(chosen) != 1 else ''} to {OUTPUT_FILE}"
@@ -516,8 +694,10 @@ def save_chosen_clips(chosen: list):
 def main():
     print_header()
 
+    used_urls = load_used_clips()
+
     twitch_clips, reddit_clips = collect_all_clips()
-    all_clips = display_clips(twitch_clips, reddit_clips)
+    all_clips = display_clips(twitch_clips, reddit_clips, used_urls)
 
     if not all_clips:
         return
