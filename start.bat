@@ -6,18 +6,18 @@ setlocal enabledelayedexpansion
 :: ========================================
 cls
 echo ========================================
-echo  🎬 ShortsManager - Starting Up...
+echo  ShortsManager - Starting Up...
 echo ========================================
 echo.
 
-echo ⏳ Syncing with GitHub...
-git pull origin master --no-rebase >nul 2>&1
+echo [...] Syncing with GitHub...
+git pull origin main --no-rebase >nul 2>&1
 if %errorlevel% equ 0 (
-    echo ✅ Synced successfully - you have the latest version
+    echo [OK] Synced successfully - you have the latest version
 ) else (
     echo.
     echo ========================================
-    echo ⚠  WARNING: SYNC FAILED
+    echo [WARNING]  WARNING: SYNC FAILED
     echo ========================================
     echo Could not sync with GitHub.
     echo This may be because:
@@ -38,9 +38,9 @@ if %errorlevel% equ 0 (
 )
 
 echo.
-echo ⏳ Checking for package updates...
+echo [...] Checking for package updates...
 pip install -r requirements.txt -q
-echo ✅ Ready! Opening ShortsManager...
+echo [OK] Ready! Opening ShortsManager...
 echo.
 
 :: Run the app (browser opens automatically)
@@ -51,23 +51,23 @@ python app.py
 :: ========================================
 cls
 echo ========================================
-echo  💾 ShortsManager - Saving ^& Syncing...
+echo  [SAVING] ShortsManager - Saving ^& Syncing...
 echo ========================================
 echo.
 
 :: Check if there are any changes
 git diff --quiet 2>nul && git diff --cached --quiet 2>nul
 if %errorlevel% neq 0 (
-    echo 📦 Changes detected - saving to GitHub...
+    echo [CHANGES] Changes detected - saving to GitHub...
     git add .
     git commit -m "auto-sync %date% %time%"
-    git push origin master:main >nul 2>&1
+    git push origin main >nul 2>&1
     if %errorlevel% equ 0 (
-        echo ✅ Changes saved to GitHub successfully
+        echo [OK] Changes saved to GitHub successfully
     ) else (
         echo.
         echo ========================================
-        echo ⚠  WARNING: COULD NOT SAVE TO GITHUB
+        echo [WARNING]  WARNING: COULD NOT SAVE TO GITHUB
         echo ========================================
         echo Your changes are saved on THIS device
         echo but could NOT be synced to GitHub.
@@ -76,17 +76,17 @@ if %errorlevel% neq 0 (
         echo until this is resolved.
         echo.
         echo To fix manually, run:
-        echo   git push origin master:main
+        echo   git push origin main
         echo.
         echo Press any key to close.
         echo ========================================
         pause >nul
     )
 ) else (
-    echo ✅ No changes to sync
+    echo [OK] No changes to sync
 )
 
 echo.
-echo Goodbye! 👋
+echo Goodbye! (bye)
 timeout /t 2 >nul
 endlocal
