@@ -23,7 +23,7 @@ on_close() {
         echo -e "${BLUE}📦 Changes detected - saving to GitHub...${RESET}"
         git add .
         git commit -m "auto-sync $(date '+%Y-%m-%d %H:%M')"
-        if git push origin master:main >/dev/null 2>&1; then
+        if git push origin main >/dev/null 2>&1; then
             echo -e "${GREEN}✅ Changes saved to GitHub successfully${RESET}"
         else
             echo ""
@@ -37,7 +37,7 @@ on_close() {
             echo -e "${WHITE}until this is resolved.${RESET}"
             echo ""
             echo -e "${WHITE}To fix manually, run:${RESET}"
-            echo -e "${YELLOW}  git push origin master:main${RESET}"
+            echo -e "${YELLOW}  git push origin main${RESET}"
             echo ""
             echo -e "${WHITE}Press any key to close.${RESET}"
             echo -e "${RED}========================================${RESET}"
