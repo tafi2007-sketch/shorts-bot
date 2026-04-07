@@ -98,6 +98,7 @@ echo ""
 
 # Run the app (browser opens automatically)
 python3 app.py &
+APP_PID=$!
 sleep 3
 open -a Safari http://127.0.0.1:5000
-wait
+wait $APP_PID
