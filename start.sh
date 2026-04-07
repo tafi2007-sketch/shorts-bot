@@ -97,9 +97,12 @@ echo -e "${GREEN}✅ Ready! Opening ShortsManager...${RESET}"
 echo ""
 
 # Run the app (browser opens automatically)
+# Run the app (browser opens automatically)
 python3 app.py &
 APP_PID=$!
 sleep 3
 open -a Safari http://127.0.0.1:5000
 echo "App is running. Press Ctrl+C to stop."
-wait $APP_PID
+while kill -0 $APP_PID 2>/dev/null; do
+    sleep 1
+done
