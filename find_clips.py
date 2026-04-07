@@ -211,13 +211,12 @@ def collect_twitch_clips() -> list:
     if not token or not client_id:
         return []
 
-    three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
-    started_at = three_months_ago.strftime("%Y-%m-%dT%H:%M:%SZ")
+    three_months_ago = (datetime.utcnow() - timedelta(days=90)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
     try:
         resp = requests.get(
             "https://api.twitch.tv/helix/clips",
-            params={"first": 50, "language": "en", "started_at": started_at},
+            params={"first": 50, "language": "en", "started_at": three_months_ago},
             headers={
                 "Authorization": f"Bearer {token}",
                 "Client-Id":     client_id,
