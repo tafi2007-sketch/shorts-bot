@@ -12,13 +12,19 @@ from datetime import datetime, date, timedelta
 app = Flask(__name__)
 
 # ── Data file paths ─────────────────────────────────────────────
-SCHEDULED_FILE  = 'scheduled_posts.json'
-HISTORY_FILE    = 'posting_history.json'
-SAVED_FILE      = 'saved_clips.json'
+SCHEDULED_FILE          = 'scheduled_posts.json'
+HISTORY_FILE            = 'posting_history.json'
+SAVED_FILE              = 'saved_clips.json'
+HIDDEN_CLIPS_FILE       = 'hidden_clips.json'
+USED_CLIPS_GAMING_FILE  = 'used_clips_gaming.json'
+USED_CLIPS_VALORANT_FILE= 'used_clips_valorant.json'
 
 # ── Try to import real clip collectors ──────────────────────────
 try:
-    from find_clips import collect_twitch_clips, collect_reddit_clips
+    from find_clips import (
+        search_general_gaming, search_valorant,
+        load_used_clips,
+    )
     CLIPS_AVAILABLE = True
 except Exception:
     CLIPS_AVAILABLE = False
@@ -151,6 +157,9 @@ def api_dashboard():
 @app.route('/api/clips/search', methods=['POST'])
 def api_search():
     global _search
+    data  = request.json or {}
+    niche = data.get('niche', 'gaming')
+
     with _search_lock:
         if _search['status'] == 'searching':
             return jsonify({'error': 'Already searching'}), 409
@@ -160,12 +169,24 @@ def api_search():
         global _search
         try:
             if CLIPS_AVAILABLE:
-                twitch = collect_twitch_clips()
-                reddit = collect_reddit_clips()
-                clips = [{'id': str(uuid.uuid4()), **c} for c in twitch + reddit]
+                if niche == 'valorant':
+                    twitch, reddit = search_valorant()
+                    used_file = USED_CLIPS_VALORANT_FILE
+                else:
+                    twitch, reddit = search_general_gaming()
+                    used_file = USED_CLIPS_GAMING_FILE
+                used_urls = load_used_clips(used_file)
+                clips = []
+                for c in twitch + reddit:
+                    clip = {'id': str(uuid.uuid4()), **c}
+                    clip['already_used'] = c['url'] in used_urls
+                    clips.append(clip)
             else:
                 import time; time.sleep(2)
                 clips = _mock_clips()
+            # Filter out hidden clips
+            hidden_urls = set(load_json(HIDDEN_CLIPS_FILE))
+            clips = [c for c in clips if c.get('url') not in hidden_urls]
             with _search_lock:
                 _search = {'status': 'done', 'results': clips, 'error': None}
         except Exception as exc:
@@ -211,6 +232,108 @@ def api_save_clip():
 def api_delete_saved(clip_id):
     clips = [c for c in load_json(SAVED_FILE) if c['id'] != clip_id]
     _save_json(SAVED_FILE, clips)
+    return jsonify({'ok': True})
+
+
+# ═══════════════════════════════════════════════════════════════
+# Routes – library
+# ═══════════════════════════════════════════════════════════════
+
+@app.route('/api/library', methods=['GET'])
+def api_get_library():
+    return jsonify(load_json(SAVED_FILE))
+
+
+@app.route('/api/library/save', methods=['POST'])
+def api_library_save():
+    data  = request.json or {}
+    clips = load_json(SAVED_FILE)
+    url   = data.get('url', '')
+    if any(c.get('url') == url for c in clips):
+        return jsonify({'error': 'Already saved'}), 409
+    clip = {
+        'id':          str(uuid.uuid4()),
+        'title':       data.get('title', ''),
+        'source':      data.get('source', ''),
+        'url':         url,
+        'view_count':  data.get('view_count'),
+        'game_name':   data.get('game_name', ''),
+        'niche':       data.get('niche', 'gaming'),
+        'saved_at':    datetime.now().isoformat(),
+        'notes':       '',
+    }
+    clips.append(clip)
+    _save_json(SAVED_FILE, clips)
+    return jsonify(clip), 201
+
+
+@app.route('/api/library/<clip_id>', methods=['DELETE'])
+def api_library_delete(clip_id):
+    clips = [c for c in load_json(SAVED_FILE) if c['id'] != clip_id]
+    _save_json(SAVED_FILE, clips)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/library/<clip_id>/posted', methods=['POST'])
+def api_library_posted(clip_id):
+    clips = load_json(SAVED_FILE)
+    clip  = next((c for c in clips if c['id'] == clip_id), None)
+    if not clip:
+        return jsonify({'error': 'Not found'}), 404
+
+    # Add to history
+    history = load_json(HISTORY_FILE)
+    history.append({
+        'id':        str(uuid.uuid4()),
+        'title':     clip['title'],
+        'date':      date.today().strftime('%Y-%m-%d'),
+        'posted_at': datetime.now().isoformat(),
+        'source':    clip.get('source', 'manual'),
+        'url':       clip.get('url', ''),
+    })
+    _save_json(HISTORY_FILE, history)
+
+    # Add to correct used_clips file
+    niche     = clip.get('niche', 'gaming')
+    used_file = USED_CLIPS_VALORANT_FILE if niche == 'valorant' else USED_CLIPS_GAMING_FILE
+    used      = load_json(used_file)
+    if not any(u.get('url') == clip['url'] for u in used):
+        used.append({
+            'url':       clip['url'],
+            'title':     clip['title'],
+            'source':    clip.get('source', 'manual'),
+            'date_used': datetime.now().isoformat(),
+        })
+        _save_json(used_file, used)
+
+    # Remove from library
+    clips = [c for c in clips if c['id'] != clip_id]
+    _save_json(SAVED_FILE, clips)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/library/<clip_id>/notes', methods=['POST'])
+def api_library_notes(clip_id):
+    data  = request.json or {}
+    clips = load_json(SAVED_FILE)
+    for c in clips:
+        if c['id'] == clip_id:
+            c['notes'] = data.get('notes', '')
+            break
+    _save_json(SAVED_FILE, clips)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/clips/hide', methods=['POST'])
+def api_hide_clip():
+    data = request.json or {}
+    url  = data.get('url', '')
+    if not url:
+        return jsonify({'error': 'URL required'}), 400
+    hidden = load_json(HIDDEN_CLIPS_FILE)
+    if url not in hidden:
+        hidden.append(url)
+        _save_json(HIDDEN_CLIPS_FILE, hidden)
     return jsonify({'ok': True})
 
 

@@ -31,9 +31,35 @@ colorama_init(autoreset=True)
 # CONSTANTS
 # ---------------------------------------------------------------
 
-OUTPUT_FILE     = "chosen_clips.json"
-USED_CLIPS_FILE = "used_clips.json"
-MIN_TWITCH_VIEWS = 10_000
+OUTPUT_FILE              = "chosen_clips.json"
+USED_CLIPS_FILE          = "used_clips.json"          # legacy / CLI default
+USED_CLIPS_GAMING_FILE   = "used_clips_gaming.json"
+USED_CLIPS_VALORANT_FILE = "used_clips_valorant.json"
+MIN_TWITCH_VIEWS         = 10_000
+MIN_TWITCH_VIEWS_VALORANT = 1_000
+
+VALORANT_SUBREDDITS_SPECIFIC = [
+    "ValorantClips",
+    "ValorantCompetitive",
+    "VALORANT",
+    "ValorantMemes",
+    "AgentAcademy",
+]
+
+VALORANT_SUBREDDITS_FILTERED = [
+    "LivestreamFail",
+    "gaming",
+    "GamersBeingBros",
+]
+
+VALORANT_KEYWORDS = [
+    "valorant", "valo", "val", "vct", "radiant", "immortal",
+    "episode", "riot games", "jett", "reyna", "sage", "omen",
+    "phoenix", "sova", "breach", "brimstone", "cypher", "killjoy",
+    "raze", "skye", "yoru", "astra", "kayo", "chamber", "neon",
+    "fade", "harbor", "gekko", "deadlock", "iso", "clove", "vyse",
+    "tejo", "waylay",
+]
 
 REDDIT_SUBREDDITS = [
     # General Gaming
@@ -125,24 +151,24 @@ _ATOM_NS = "http://www.w3.org/2005/Atom"
 # USED CLIPS TRACKING
 # ---------------------------------------------------------------
 
-def load_used_clips() -> set[str]:
-    """Load used clip URLs from used_clips.json. Returns a set of URLs."""
-    if not os.path.exists(USED_CLIPS_FILE):
+def load_used_clips(file_path: str = USED_CLIPS_FILE) -> set[str]:
+    """Load used clip URLs from a JSON file. Returns a set of URLs."""
+    if not os.path.exists(file_path):
         return set()
     try:
-        with open(USED_CLIPS_FILE, "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return {entry["url"] for entry in data if "url" in entry}
     except Exception:
         return set()
 
 
-def save_used_clips(chosen: list):
-    """Append newly chosen clips to used_clips.json."""
+def save_used_clips(chosen: list, file_path: str = USED_CLIPS_FILE):
+    """Append newly chosen clips to a used-clips JSON file."""
     existing = []
-    if os.path.exists(USED_CLIPS_FILE):
+    if os.path.exists(file_path):
         try:
-            with open(USED_CLIPS_FILE, "r", encoding="utf-8") as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 existing = json.load(f)
         except Exception:
             existing = []
@@ -160,7 +186,7 @@ def save_used_clips(chosen: list):
             })
             existing_urls.add(clip["url"])
 
-    with open(USED_CLIPS_FILE, "w", encoding="utf-8") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         json.dump(existing, f, indent=2, ensure_ascii=False)
 
 
@@ -517,6 +543,146 @@ def collect_reddit_clips() -> list:
     for sub in REDDIT_SUBREDDITS:
         all_clips.extend(results.get(sub, []))
     return all_clips
+
+
+# ---------------------------------------------------------------
+# VALORANT-SPECIFIC SOURCES
+# ---------------------------------------------------------------
+
+def collect_valorant_twitch_clips() -> list:
+    """Fetch Twitch clips for Valorant (game_id=516575)."""
+    client_id = os.getenv("TWITCH_CLIENT_ID")
+    token = get_twitch_token()
+    if not token or not client_id:
+        return []
+
+    fourteen_days_ago = (
+        datetime.now(timezone.utc) - timedelta(days=14)
+    ).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    url = (
+        f"https://api.twitch.tv/helix/clips"
+        f"?game_id=516575&first=20&language=en&started_at={fourteen_days_ago}"
+    )
+    try:
+        resp = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Client-Id":     client_id,
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        raw = resp.json().get("data", [])
+    except Exception:
+        return []
+
+    clips = []
+    for c in raw:
+        clip_url = c.get("url", "")
+        views = c.get("view_count", 0)
+        if not clip_url or views < MIN_TWITCH_VIEWS_VALORANT:
+            continue
+        clips.append({
+            "source":      "twitch",
+            "game_name":   "Valorant",
+            "title":       c.get("title", "No title"),
+            "url":         clip_url,
+            "view_count":  views,
+            "broadcaster": c.get("broadcaster_name", ""),
+            "subreddit":   None,
+        })
+    clips.sort(key=lambda c: c["view_count"], reverse=True)
+    return clips
+
+
+def collect_valorant_reddit_clips() -> list:
+    """Fetch Reddit clips from Valorant-specific and filtered general subreddits."""
+    results: dict[str, list] = {}
+    threads = []
+
+    kw_lower = [k.lower() for k in VALORANT_KEYWORDS]
+
+    def worker(sub: str, filter_kw: bool):
+        clips = fetch_reddit_rss(sub)
+        if filter_kw:
+            clips = [c for c in clips if any(k in c["title"].lower() for k in kw_lower)]
+        results[sub] = clips
+
+    for sub in VALORANT_SUBREDDITS_SPECIFIC:
+        t = threading.Thread(target=worker, args=(sub, False), daemon=True)
+        threads.append(t)
+        t.start()
+
+    for sub in VALORANT_SUBREDDITS_FILTERED:
+        t = threading.Thread(target=worker, args=(sub, True), daemon=True)
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    all_clips = []
+    for sub in VALORANT_SUBREDDITS_SPECIFIC + VALORANT_SUBREDDITS_FILTERED:
+        all_clips.extend(results.get(sub, []))
+    return all_clips
+
+
+# ---------------------------------------------------------------
+# NICHE SEARCH ENTRY POINTS
+# ---------------------------------------------------------------
+
+def _dedup(clips: list) -> list:
+    seen: set[str] = set()
+    out = []
+    for c in clips:
+        if c["url"] not in seen:
+            seen.add(c["url"])
+            out.append(c)
+    return out
+
+
+def search_general_gaming() -> tuple[list, list]:
+    """Fetch general gaming clips from all sources. Returns (twitch_clips, reddit_clips)."""
+    twitch_clips: list = []
+    reddit_clips: list = []
+
+    def run_twitch():
+        nonlocal twitch_clips
+        twitch_clips = collect_twitch_clips()
+
+    def run_reddit():
+        nonlocal reddit_clips
+        reddit_clips = collect_reddit_clips()
+
+    t1 = threading.Thread(target=run_twitch, daemon=True)
+    t2 = threading.Thread(target=run_reddit, daemon=True)
+    t1.start(); t2.start()
+    t1.join();  t2.join()
+
+    return _dedup(twitch_clips), _dedup(reddit_clips)
+
+
+def search_valorant() -> tuple[list, list]:
+    """Fetch Valorant-specific clips from all sources. Returns (twitch_clips, reddit_clips)."""
+    twitch_clips: list = []
+    reddit_clips: list = []
+
+    def run_twitch():
+        nonlocal twitch_clips
+        twitch_clips = collect_valorant_twitch_clips()
+
+    def run_reddit():
+        nonlocal reddit_clips
+        reddit_clips = collect_valorant_reddit_clips()
+
+    t1 = threading.Thread(target=run_twitch, daemon=True)
+    t2 = threading.Thread(target=run_reddit, daemon=True)
+    t1.start(); t2.start()
+    t1.join();  t2.join()
+
+    return _dedup(twitch_clips), _dedup(reddit_clips)
 
 
 # ---------------------------------------------------------------

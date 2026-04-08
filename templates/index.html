@@ -391,6 +391,53 @@
     /* ══════════════════════════════════════════════════════════
        CLIP FINDER
     ══════════════════════════════════════════════════════════ */
+    .niche-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .niche-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+      white-space: nowrap;
+    }
+    .niche-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-2);
+      transition: all var(--transition);
+      cursor: pointer;
+    }
+    .niche-btn:hover {
+      border-color: var(--primary);
+      color: var(--text);
+    }
+    .niche-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 16px var(--primary-glow);
+    }
+    .used-badge {
+      font-size: 11px;
+      color: var(--warning);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+
     .search-hero {
       background: linear-gradient(135deg, #1A0A35, #1E1040);
       border: 1px solid rgba(124,58,237,.3);
@@ -430,8 +477,8 @@
 
     .clips-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
       margin-bottom: 40px;
     }
     .clip-card {
@@ -470,17 +517,18 @@
     .clip-meta-icon { font-size: 12px; }
     .clip-actions {
       display: flex;
-      gap: 8px;
+      flex-direction: row;
+      gap: 0.5rem;
+      flex-wrap: nowrap;
       margin-top: auto;
     }
-    .clip-actions a.btn {
-      flex: 1;
-      justify-content: center;
-      font-size: 12px;
-      padding: 7px 12px;
-    }
+    .clip-actions a.btn,
     .clip-actions button {
       flex: 1;
+      justify-content: center;
+      font-size: 11px;
+      padding: 6px 8px;
+      white-space: nowrap;
     }
     .saved-badge {
       font-size: 11px;
@@ -992,6 +1040,64 @@
       filter: brightness(1.1);
       transform: translateY(-1px);
     }
+
+    /* ══════════════════════════════════════════════════════════
+       LIBRARY PAGE
+    ══════════════════════════════════════════════════════════ */
+    .lib-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .lib-tab {
+      padding: 10px 20px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-2);
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      background: transparent;
+      cursor: pointer;
+      transition: all var(--transition);
+      margin-bottom: -1px;
+    }
+    .lib-tab:hover { color: var(--text); background: var(--primary-dim); }
+    .lib-tab.active {
+      background: var(--bg-card);
+      border-color: var(--border);
+      border-bottom-color: var(--bg-card);
+      color: #C4B5FD;
+    }
+    .lib-pane { display: none; }
+    .lib-pane.active { display: block; }
+    .lib-notes {
+      width: 100%;
+      min-height: 54px;
+      resize: vertical;
+      font-size: 12.5px;
+      padding: 8px 10px;
+      line-height: 1.5;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .lib-notes:focus { border-color: var(--primary); }
+    .lib-confirm-panel {
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+    .lib-clip-date {
+      font-size: 11px;
+      color: var(--text-3);
+    }
+    .clip-actions.wrap { flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -1029,6 +1135,11 @@
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <span>Find Clips</span>
+      </div>
+
+      <div class="nav-item" data-section="library" onclick="showSection('library',this)">
+        <span style="font-size:16px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.8">📚</span>
+        <span>Library</span>
       </div>
 
       <div class="nav-item" data-section="scheduler" onclick="showSection('scheduler',this)">
@@ -1091,13 +1202,20 @@
         <div class="search-hero">
           <h2>🔍 Search for Clips</h2>
           <p>Searches Twitch (top clips by views) and Reddit (gaming subreddits) simultaneously</p>
+
+          <div class="niche-selector">
+            <span class="niche-label">Select Niche:</span>
+            <button class="niche-btn active" id="niche-gaming" onclick="selectNiche('gaming')">🎮 General Gaming</button>
+            <button class="niche-btn" id="niche-valorant" onclick="selectNiche('valorant')">🔫 Valorant</button>
+          </div>
+
           <button class="btn btn-primary" id="search-btn" onclick="startSearch()">
             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             Search for Clips
           </button>
           <div class="search-spinner" id="search-spinner">
             <div class="spinner-ring"></div>
-            Searching Twitch &amp; Reddit…
+            <span id="search-spinner-text">Searching Twitch &amp; Reddit for General Gaming clips…</span>
           </div>
         </div>
 
@@ -1113,6 +1231,26 @@
           <div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">No saved clips yet — find some above!</div></div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- ════════════ LIBRARY ════════════ -->
+    <section id="section-library" class="section">
+      <div class="page-header">
+        <div class="page-title">Library</div>
+        <div class="page-sub">Your saved clips, organised by niche</div>
+      </div>
+      <div class="page-body">
+        <div class="lib-tabs">
+          <button class="lib-tab active" id="lib-tab-gaming" onclick="switchLibraryTab('gaming')">🎮 General Gaming (0)</button>
+          <button class="lib-tab" id="lib-tab-valorant" onclick="switchLibraryTab('valorant')">🔫 Valorant (0)</button>
+        </div>
+        <div id="lib-pane-gaming" class="lib-pane active">
+          <div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">No clips saved yet — find some clips and save them here!</div></div>
+        </div>
+        <div id="lib-pane-valorant" class="lib-pane">
+          <div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">No clips saved yet — find some clips and save them here!</div></div>
+        </div>
       </div>
     </section>
 
@@ -1279,6 +1417,25 @@
   </div>
 </div>
 
+<!-- ════════════════════════════════════════════════════
+     HIDE CLIP MODAL
+════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-hide-clip">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">🚫 Hide Clip Forever</div>
+      <button class="modal-close" onclick="cancelHideClip()">✕</button>
+    </div>
+    <p style="color:var(--text-2);font-size:13.5px;line-height:1.6;margin-bottom:4px">
+      Are you sure? This clip will never appear in your search results again. This cannot be undone.
+    </p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cancelHideClip()">Cancel</button>
+      <button class="btn btn-danger-solid" onclick="executeHideClip()">Yes, hide forever</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast container -->
 <div id="toast-container"></div>
 
@@ -1295,8 +1452,10 @@ let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let scheduledPosts  = [];
 let searchPollTimer = null;
+let selectedNiche   = 'gaming';
 let editingPostId   = null;
 let savedClipIds    = new Set(); // track which search-result clips are already saved
+let clipsMap        = {};        // id → clip object for search results
 let dayModalDate     = null;    // date string for the day modal
 let editReturnDate   = null;    // if set, re-open day modal after edit closes
 let scheduleReturnDate = null;  // if set, re-open day modal after schedule closes
@@ -1313,6 +1472,7 @@ function showSection(name, navEl) {
 
   if (name === 'dashboard')  loadDashboard();
   if (name === 'clips')      loadSavedClips();
+  if (name === 'library')    loadLibrary();
   if (name === 'scheduler')  loadScheduler();
 }
 
@@ -1386,6 +1546,15 @@ async function loadDashboard() {
 // ──────────────────────────────────────────────────────────────
 // Clip Finder
 // ──────────────────────────────────────────────────────────────
+function selectNiche(niche) {
+  selectedNiche = niche;
+  document.getElementById('niche-gaming').classList.toggle('active', niche === 'gaming');
+  document.getElementById('niche-valorant').classList.toggle('active', niche === 'valorant');
+  const label = niche === 'valorant' ? 'Valorant' : 'General Gaming';
+  document.getElementById('search-spinner-text').textContent =
+    `Searching Twitch & Reddit for ${label} clips\u2026`;
+}
+
 async function startSearch() {
   const btn     = document.getElementById('search-btn');
   const spinner = document.getElementById('search-spinner');
@@ -1396,7 +1565,11 @@ async function startSearch() {
   document.getElementById('search-results-wrap').style.display = 'none';
 
   try {
-    await apiFetch('/api/clips/search', {method:'POST'});
+    await apiFetch('/api/clips/search', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({niche: selectedNiche}),
+    });
     if (searchPollTimer) clearInterval(searchPollTimer);
     searchPollTimer = setInterval(pollSearchStatus, 1000);
   } catch (e) {
@@ -1430,6 +1603,10 @@ function renderSearchResults(clips) {
     showToast('No clips found', 'info');
     return;
   }
+  // Populate clip map so onclick handlers can look up the full object by ID
+  clipsMap = {};
+  clips.forEach(c => { clipsMap[c.id] = c; });
+
   const wrap = document.getElementById('search-results-wrap');
   const grid = document.getElementById('clips-grid');
   document.getElementById('results-heading').textContent =
@@ -1441,12 +1618,14 @@ function renderSearchResults(clips) {
     const meta = isTwitch
       ? `<span class="clip-meta-icon">👁</span> ${fmtViews(c.view_count)} views · ${escHtml(c.broadcaster || '')}`
       : `<span class="clip-meta-icon">🤝</span> r/${escHtml(c.subreddit || c.game_name || '')}`;
-    const alreadySaved = savedClipIds.has(c.id);
+    const alreadySaved  = savedClipIds.has(c.id);
+    const alreadyUsed   = c.already_used ? `<div class="used-badge">⚠️ ALREADY USED</div>` : '';
     return `
-      <div class="clip-card" id="clip-${c.id}">
+      <div class="clip-card" id="clip-${c.id}" data-url="${escHtml(c.url)}">
         <div class="clip-source-row">
           <span class="source-badge ${badgeClass}">${c.source}</span>
         </div>
+        ${alreadyUsed}
         <div class="clip-title">${escHtml(c.title)}</div>
         <div class="clip-meta">${meta}</div>
         <div class="clip-actions">
@@ -1455,11 +1634,14 @@ function renderSearchResults(clips) {
             Preview
           </a>
           ${alreadySaved
-            ? `<span class="saved-badge">✅ Saved</span>`
-            : `<button class="btn btn-primary btn-sm" onclick="saveClip(${escAttr(c)})">
+            ? `<span class="saved-badge">✓ Saved</span>`
+            : `<button class="btn btn-primary btn-sm" id="save-btn-${c.id}" onclick="saveClip('${c.id}')">
                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                  Save to Library
                </button>`}
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:rgba(239,68,68,.3)" onclick="confirmHideClip('${c.id}')">
+            🚫 Don't Show Again
+          </button>
         </div>
       </div>`;
   }).join('');
@@ -1468,26 +1650,39 @@ function renderSearchResults(clips) {
   showToast(`Found ${clips.length} clips!`, 'success');
 }
 
-async function saveClip(clip) {
+async function saveClip(clipId) {
+  const clip = clipsMap[clipId];
+  if (!clip) { showToast('Clip not found', 'error'); return; }
+  // Disable button immediately to prevent double-click
+  const btn = document.getElementById('save-btn-' + clip.id);
+  if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  console.log('[saveClip] saving clip id=' + clip.id + ' niche=' + selectedNiche, clip);
   try {
-    await apiFetch('/api/clips/saved', {
+    await apiFetch('/api/library/save', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(clip)
+      body: JSON.stringify({
+        title:      clip.title,
+        url:        clip.url,
+        source:     clip.source,
+        game_name:  clip.game_name,
+        view_count: clip.view_count,
+        niche:      selectedNiche,
+      })
     });
-    // Update the card UI
-    const card = document.getElementById('clip-' + clip.id);
-    if (card) {
-      const actionsDiv = card.querySelector('.clip-actions');
-      const btn = actionsDiv.querySelector('button');
-      if (btn) btn.replaceWith(Object.assign(document.createElement('span'), {
-        className: 'saved-badge', textContent: '✅ Saved'
-      }));
-    }
+    // Update the card UI — replace button with "✓ Saved" badge
+    if (btn) btn.replaceWith(Object.assign(document.createElement('span'), {
+      className: 'saved-badge', textContent: '✓ Saved'
+    }));
     savedClipIds.add(clip.id);
-    await loadSavedClips();
-    showToast('Clip saved to library!', 'success');
+    showToast('✅ Saved to Library!', 'success');
+    // Refresh library if it's visible
+    if (document.getElementById('section-library').classList.contains('active')) {
+      await loadLibrary();
+    }
   } catch (e) {
+    console.error('[saveClip] error:', e);
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
     showToast('Failed to save clip', 'error');
   }
 }
@@ -2036,6 +2231,178 @@ function formatPostedAt(isoStr) {
   if (!isoStr) return '';
   const d = new Date(isoStr);
   return d.toLocaleString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+
+// ──────────────────────────────────────────────────────────────
+// Library
+// ──────────────────────────────────────────────────────────────
+let libraryClips = [];
+let libraryTab   = 'gaming';
+
+async function loadLibrary() {
+  try {
+    libraryClips = await apiFetch('/api/library');
+    renderLibrary();
+  } catch(e) {
+    console.error('Library load error', e);
+  }
+}
+
+function renderLibrary() {
+  const gamingClips   = libraryClips.filter(c => c.niche !== 'valorant');
+  const valorantClips = libraryClips.filter(c => c.niche === 'valorant');
+  document.getElementById('lib-tab-gaming').textContent   = `🎮 General Gaming (${gamingClips.length})`;
+  document.getElementById('lib-tab-valorant').textContent = `🔫 Valorant (${valorantClips.length})`;
+  renderLibraryPane('gaming');
+  renderLibraryPane('valorant');
+}
+
+function switchLibraryTab(tab) {
+  libraryTab = tab;
+  document.getElementById('lib-tab-gaming').classList.toggle('active',   tab === 'gaming');
+  document.getElementById('lib-tab-valorant').classList.toggle('active', tab === 'valorant');
+  document.getElementById('lib-pane-gaming').classList.toggle('active',   tab === 'gaming');
+  document.getElementById('lib-pane-valorant').classList.toggle('active', tab === 'valorant');
+}
+
+function renderLibraryPane(tab) {
+  const clips = libraryClips
+    .filter(c => tab === 'valorant' ? c.niche === 'valorant' : c.niche !== 'valorant')
+    .slice()
+    .sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+
+  const pane = document.getElementById('lib-pane-' + tab);
+  if (clips.length === 0) {
+    pane.innerHTML = `<div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">No clips saved yet — find some clips and save them here!</div></div>`;
+    return;
+  }
+  pane.innerHTML = `<div class="clips-grid">${clips.map(c => renderLibraryCard(c)).join('')}</div>`;
+}
+
+function renderLibraryCard(c) {
+  const isTwitch   = c.source === 'twitch';
+  const badgeClass = isTwitch ? 'badge-twitch' : 'badge-reddit';
+  const viewsHtml  = isTwitch && c.view_count
+    ? `<span class="clip-meta-icon">👁</span> ${fmtViews(c.view_count)} views · `
+    : '';
+  const savedDate  = c.saved_at
+    ? new Date(c.saved_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})
+    : '';
+  const notesEsc   = escHtml(c.notes || '');
+
+  return `
+    <div class="clip-card" id="lib-clip-${c.id}">
+      <div class="clip-source-row">
+        <span class="source-badge ${badgeClass}">${c.source}</span>
+        <span class="lib-clip-date">Saved ${savedDate}</span>
+      </div>
+      <div class="clip-title">${escHtml(c.title)}</div>
+      ${viewsHtml ? `<div class="clip-meta">${viewsHtml}</div>` : ''}
+      <a class="btn btn-ghost btn-sm" href="${escHtml(c.url)}" target="_blank" rel="noreferrer" style="align-self:flex-start">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Preview
+      </a>
+      <textarea class="lib-notes" placeholder="Add notes…" onblur="saveLibraryNotes('${c.id}', this.value)">${notesEsc}</textarea>
+      <div class="clip-actions wrap" id="lib-actions-${c.id}">
+        <button class="btn btn-primary btn-sm" onclick="scheduleFromLibrary(${escAttr(c)})">📅 Schedule</button>
+        <button class="btn btn-success btn-sm" onclick="markLibraryClipPosted('${c.id}')">✅ Mark as Posted</button>
+        <button class="btn btn-danger btn-sm" onclick="removeFromLibrary('${c.id}')">🗑️ Remove</button>
+      </div>
+      <div id="lib-confirm-${c.id}" class="lib-confirm-panel" style="display:none">
+        <div class="confirm-delete-msg" style="margin-bottom:10px">Are you sure you want to remove this clip from your library? This cannot be undone.</div>
+        <div class="confirm-delete-btns">
+          <button class="btn btn-danger-solid btn-sm" onclick="executeRemoveFromLibrary('${c.id}')">Yes</button>
+          <button class="btn btn-ghost btn-sm" onclick="cancelRemoveFromLibrary('${c.id}')">No</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveLibraryNotes(id, notes) {
+  try {
+    await apiFetch('/api/library/' + id + '/notes', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({notes})
+    });
+  } catch(e) {
+    console.error('Failed to save notes', e);
+  }
+}
+
+function scheduleFromLibrary(clip) {
+  document.getElementById('sched-title').value  = clip.title;
+  document.getElementById('sched-date').value   = todayStr();
+  document.getElementById('sched-time').value   = '12:00';
+  document.getElementById('sched-source').value = clip.source || 'manual';
+  document.getElementById('modal-schedule-title').textContent = 'Schedule Post';
+  openModal('modal-schedule');
+}
+
+async function markLibraryClipPosted(id) {
+  try {
+    await apiFetch('/api/library/' + id + '/posted', {method: 'POST'});
+    await loadLibrary();
+    await loadDashboard();
+    showToast('Marked as posted! ✅', 'success');
+  } catch(e) {
+    showToast('Failed to mark as posted', 'error');
+  }
+}
+
+function removeFromLibrary(id) {
+  document.getElementById('lib-confirm-' + id).style.display = 'block';
+  document.getElementById('lib-actions-' + id).style.display = 'none';
+}
+
+function cancelRemoveFromLibrary(id) {
+  document.getElementById('lib-confirm-' + id).style.display = 'none';
+  document.getElementById('lib-actions-' + id).style.display = '';
+}
+
+async function executeRemoveFromLibrary(id) {
+  try {
+    await apiFetch('/api/library/' + id, {method: 'DELETE'});
+    await loadLibrary();
+    showToast('Clip removed from library', 'info');
+  } catch(e) {
+    showToast('Failed to remove clip', 'error');
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Hide Clip (Don't Show Again)
+// ──────────────────────────────────────────────────────────────
+let pendingHideClipId = null;
+
+function confirmHideClip(clipId) {
+  pendingHideClipId = clipId;
+  openModal('modal-hide-clip');
+}
+
+function cancelHideClip() {
+  pendingHideClipId = null;
+  closeModal('modal-hide-clip');
+}
+
+async function executeHideClip() {
+  if (!pendingHideClipId) return;
+  const card = document.getElementById('clip-' + pendingHideClipId);
+  const url  = card ? card.dataset.url : null;
+  if (!url) { closeModal('modal-hide-clip'); return; }
+  try {
+    await apiFetch('/api/clips/hide', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url})
+    });
+    closeModal('modal-hide-clip');
+    if (card) card.remove();
+    pendingHideClipId = null;
+    showToast('Clip hidden forever', 'info');
+  } catch(e) {
+    showToast('Failed to hide clip', 'error');
+  }
 }
 
 // ──────────────────────────────────────────────────────────────
