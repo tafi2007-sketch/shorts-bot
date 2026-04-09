@@ -492,8 +492,15 @@ def api_yt_auth_status():
 
 @app.route('/api/youtube/authenticate', methods=['POST'])
 def api_yt_authenticate():
+    print("AUTH ENDPOINT HIT")
     if not YOUTUBE_AVAILABLE:
         return jsonify({'success': False, 'error': 'YouTube uploader not available'}), 500
+
+    # Fail fast if the credentials file is missing — no point starting the thread
+    creds_file = os.getenv('YOUTUBE_CREDENTIALS_FILE', 'youtube_credentials.json')
+    if not os.path.exists(creds_file):
+        print(f"ERROR: credentials file not found: {creds_file}")
+        return jsonify({'success': False, 'error': f'Missing credentials file: {creds_file}. Download it from Google Cloud Console.'}), 500
 
     with _yt_auth_lock:
         if _yt_auth_state['status'] == 'pending':

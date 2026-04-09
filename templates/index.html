@@ -2785,25 +2785,38 @@ async function checkYtStatus() {
 }
 
 async function connectYouTube() {
+  console.log('[YouTube] connectYouTube() called');
   try {
     showToast('Opening browser for YouTube authentication…', 'info');
-    await apiFetch('/api/youtube/authenticate', { method: 'POST' });
-    // Poll until token appears
+    const res = await fetch('/api/youtube/authenticate', { method: 'POST' });
+    const data = await res.json();
+    console.log('[YouTube] authenticate response:', res.status, data);
+    if (!res.ok) {
+      showToast('Error: ' + (data.error || 'Authentication failed'), 'error');
+      return;
+    }
+    showToast('Browser opened — complete sign-in then return here', 'info');
+    // Poll until token appears or flow errors
     let attempts = 0;
     const poll = setInterval(async () => {
       attempts++;
       const st = await checkYtStatus();
+      console.log('[YouTube] poll attempt', attempts, st);
       if (st.authenticated) {
         clearInterval(poll);
         showToast('✅ YouTube connected!', 'success');
         loadYtSettings();
+      } else if (st.flow_status === 'error') {
+        clearInterval(poll);
+        showToast('Authentication error — check server logs', 'error');
       } else if (attempts > 60) {
         clearInterval(poll);
         showToast('Authentication timed out. Please try again.', 'error');
       }
     }, 2000);
   } catch(e) {
-    showToast('Failed to start authentication', 'error');
+    console.error('[YouTube] connectYouTube error:', e);
+    showToast('Failed to start authentication: ' + e.message, 'error');
   }
 }
 
