@@ -5,7 +5,9 @@
       "Bash(pip install:*)",
       "Bash(python -c \"import flask; print\\('Flask', flask.__version__, 'installed OK'\\)\")",
       "Bash(python -c \"import ast, sys; ast.parse\\(open\\('find_clips.py'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('find_clips.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('find_clips.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "Bash(python -c \"import app; print\\('app.py OK'\\)\")",
+      "Bash(python -c \"import youtube_uploader; print\\('youtube_uploader.py OK'\\)\")"
     ]
   }
 }

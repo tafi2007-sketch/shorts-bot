@@ -1104,6 +1104,174 @@
       color: var(--text-3);
     }
     .clip-actions.wrap { flex-wrap: wrap; }
+
+    /* ══════════════════════════════════════════════════════════
+       YOUTUBE STATUS DOT & BUTTON
+    ══════════════════════════════════════════════════════════ */
+    .yt-status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-left: auto;
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+    .yt-status-dot.connected    { background: var(--success); }
+    .yt-status-dot.disconnected { background: var(--danger); }
+
+    .yt-connect-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      margin: 4px 12px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(255,0,0,.12);
+      border: 1px solid rgba(255,0,0,.3);
+      color: #ff6b6b;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .yt-connect-btn:hover { background: rgba(255,0,0,.2); }
+
+    /* ══════════════════════════════════════════════════════════
+       YOUTUBE UPLOAD MODAL
+    ══════════════════════════════════════════════════════════ */
+    .yt-modal-box {
+      max-width: 540px;
+    }
+    .yt-step { display: none; }
+    .yt-step.active { display: block; }
+
+    .yt-step-indicator {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .yt-step-dot {
+      flex: 1;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--border);
+      transition: background .3s ease;
+    }
+    .yt-step-dot.active { background: #ff0000; }
+
+    .yt-file-drop {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 32px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      margin-bottom: 16px;
+    }
+    .yt-file-drop:hover, .yt-file-drop.dragover {
+      border-color: #ff0000;
+      background: rgba(255,0,0,.05);
+    }
+    .yt-file-drop-icon { font-size: 36px; margin-bottom: 8px; }
+    .yt-file-drop-text { font-size: 13px; color: var(--text-2); }
+    .yt-file-name {
+      font-size: 13px;
+      color: var(--success);
+      font-weight: 600;
+      margin-top: 8px;
+      word-break: break-all;
+    }
+
+    .yt-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      transition: all var(--transition);
+      cursor: pointer;
+      background: #ff0000;
+      color: #fff;
+    }
+    .yt-btn:hover:not(:disabled) { background: #cc0000; transform: translateY(-1px); }
+    .yt-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+    .yt-char-count {
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: right;
+      margin-top: 2px;
+    }
+    .yt-char-count.over { color: var(--danger); }
+
+    .yt-progress-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+    .yt-progress-fill {
+      height: 100%;
+      background: #ff0000;
+      border-radius: 3px;
+      transition: width .4s ease;
+      width: 0%;
+    }
+    .yt-upload-status {
+      font-size: 13px;
+      color: var(--text-2);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .yt-success-box {
+      background: var(--success-dim);
+      border: 1px solid rgba(16,185,129,.3);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      text-align: center;
+      margin-top: 16px;
+    }
+    .yt-success-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 4px;
+    }
+    .yt-success-sub { font-size: 12px; color: var(--text-2); margin-bottom: 12px; }
+
+    /* ══════════════════════════════════════════════════════════
+       YOUTUBE SETTINGS SECTION
+    ══════════════════════════════════════════════════════════ */
+    .yt-settings-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      max-width: 520px;
+    }
+    .yt-settings-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .yt-settings-status.connected {
+      background: var(--success-dim);
+      border: 1px solid rgba(16,185,129,.3);
+      color: var(--success);
+    }
+    .yt-settings-status.disconnected {
+      background: var(--danger-dim);
+      border: 1px solid rgba(239,68,68,.3);
+      color: var(--danger);
+    }
   </style>
 </head>
 <body>
@@ -1156,6 +1324,17 @@
         </svg>
         <span>Scheduler</span>
       </div>
+
+      <div class="nav-label">Integrations</div>
+
+      <div class="nav-item" data-section="youtube-settings" onclick="showSection('youtube-settings',this)">
+        <span style="font-size:15px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.8">▶</span>
+        <span>YouTube</span>
+        <span id="yt-status-dot" class="yt-status-dot disconnected"></span>
+      </div>
+    </div>
+    <div id="yt-sidebar-connect" style="display:none">
+      <button class="yt-connect-btn" onclick="connectYouTube()">🔗 Connect YouTube</button>
     </div>
 
     <div class="sidebar-footer">v1.0.0 · Local</div>
@@ -1256,6 +1435,31 @@
         </div>
         <div id="lib-pane-valorant" class="lib-pane">
           <div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">No clips saved yet — find some clips and save them here!</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════ YOUTUBE SETTINGS ════════════ -->
+    <section id="section-youtube-settings" class="section">
+      <div class="page-header">
+        <div class="page-title">YouTube Settings</div>
+        <div class="page-sub">Connect your YouTube channel and manage upload preferences</div>
+      </div>
+      <div class="page-body">
+        <div class="yt-settings-card">
+          <div id="yt-settings-status-box" class="yt-settings-status disconnected">
+            <span style="font-size:20px">▶</span>
+            <span id="yt-settings-status-text">Not connected</span>
+          </div>
+          <div id="yt-settings-email" style="font-size:12px;color:var(--text-3);margin-bottom:16px;display:none"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button id="yt-settings-connect-btn" class="yt-btn" onclick="connectYouTube()" style="display:none">
+              🔗 Connect YouTube Account
+            </button>
+            <button id="yt-settings-disconnect-btn" class="btn btn-danger" onclick="disconnectYouTube()" style="display:none">
+              Disconnect
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -1442,6 +1646,95 @@
   </div>
 </div>
 
+<!-- ════════════════════════════════════════════════════
+     YOUTUBE UPLOAD MODAL
+════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-yt-upload">
+  <div class="modal-box yt-modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="yt-modal-title">▶ Post to YouTube</div>
+      <button class="modal-close" onclick="closeYtModal()">✕</button>
+    </div>
+
+    <!-- Step indicators -->
+    <div class="yt-step-indicator">
+      <div class="yt-step-dot active" id="yt-dot-1"></div>
+      <div class="yt-step-dot" id="yt-dot-2"></div>
+      <div class="yt-step-dot" id="yt-dot-3"></div>
+    </div>
+
+    <!-- ── Step 1: Select file ─────────────────── -->
+    <div class="yt-step active" id="yt-step-1">
+      <p style="color:var(--text-2);font-size:13px;margin-bottom:16px">Select your edited video file to upload to YouTube.</p>
+      <div class="yt-file-drop" id="yt-drop-zone" onclick="document.getElementById('yt-file-input').click()">
+        <div class="yt-file-drop-icon">🎬</div>
+        <div class="yt-file-drop-text">Click to select a video file<br><span style="font-size:11px;opacity:.7">MP4, MOV, AVI supported</span></div>
+        <div class="yt-file-name" id="yt-file-name" style="display:none"></div>
+      </div>
+      <input type="file" id="yt-file-input" accept=".mp4,.mov,.avi,video/*" style="display:none" onchange="onYtFileSelected(this)" />
+      <div class="modal-actions" style="margin-top:12px">
+        <button class="btn btn-ghost" onclick="closeYtModal()">Cancel</button>
+        <button class="yt-btn" id="yt-generate-btn" disabled onclick="generateYtMetadata()">
+          ✨ Generate Metadata
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Step 2: Review metadata ─────────────── -->
+    <div class="yt-step" id="yt-step-2">
+      <p style="color:var(--text-2);font-size:13px;margin-bottom:16px">Review and edit the AI-generated metadata before uploading.</p>
+      <div id="yt-meta-spinner" style="display:none;text-align:center;padding:32px 0">
+        <div class="spinner-ring" style="margin:0 auto 10px"></div>
+        <div style="font-size:13px;color:var(--text-2)">Claude is generating metadata…</div>
+      </div>
+      <div id="yt-meta-fields" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Title <span id="yt-title-count" class="yt-char-count">0/60</span></label>
+          <input class="form-input" type="text" id="yt-meta-title" maxlength="100" oninput="updateYtTitleCount()" placeholder="Video title…" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-input" id="yt-meta-desc" rows="5" placeholder="Video description…" style="resize:vertical"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags <span style="font-weight:400;color:var(--text-3)">(comma separated)</span></label>
+          <textarea class="form-input" id="yt-meta-tags" rows="2" placeholder="tag1, tag2, tag3…" style="resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="ytGoToStep(1)">← Back</button>
+        <button class="yt-btn" id="yt-upload-btn" disabled onclick="startYtUpload()">
+          ▶ Upload to YouTube
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Step 3: Uploading / done ───────────── -->
+    <div class="yt-step" id="yt-step-3">
+      <div id="yt-uploading-state">
+        <p style="color:var(--text-2);font-size:13px;margin-bottom:8px" id="yt-upload-status">Uploading your video…</p>
+        <div class="yt-progress-bar">
+          <div class="yt-progress-fill" id="yt-progress-fill"></div>
+        </div>
+        <p style="color:var(--text-3);font-size:12px">This may take a few minutes depending on file size.</p>
+      </div>
+      <div id="yt-done-state" style="display:none">
+        <div class="yt-success-box">
+          <div class="yt-success-title">✅ Uploaded Successfully!</div>
+          <div class="yt-success-sub">Your video is private. Click below to review and publish it in YouTube Studio.</div>
+          <a id="yt-studio-link" href="#" target="_blank" rel="noreferrer" class="yt-btn" style="display:inline-flex;text-decoration:none;margin-top:4px">
+            Open in YouTube Studio ↗
+          </a>
+        </div>
+        <div class="modal-actions" style="margin-top:16px">
+          <button class="btn btn-ghost" onclick="closeYtModal()">Close</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- Toast container -->
 <div id="toast-container"></div>
 
@@ -1476,10 +1769,11 @@ function showSection(name, navEl) {
   document.getElementById('section-' + name).classList.add('active');
   if (navEl) navEl.classList.add('active');
 
-  if (name === 'dashboard')  loadDashboard();
-  if (name === 'clips')      loadSavedClips();
-  if (name === 'library')    loadLibrary();
-  if (name === 'scheduler')  loadScheduler();
+  if (name === 'dashboard')        loadDashboard();
+  if (name === 'clips')            loadSavedClips();
+  if (name === 'library')          loadLibrary();
+  if (name === 'scheduler')        loadScheduler();
+  if (name === 'youtube-settings') loadYtSettings();
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -1862,6 +2156,7 @@ function renderDayModal() {
           <button class="btn btn-success btn-sm" onclick="markPostedFromDay('${p.id}')">✅ Mark Posted</button>
           <button class="btn btn-ghost btn-sm" onclick="openEditFromDay(${escAttr(p)})">Edit</button>
         ` : ''}
+        <button class="btn btn-sm" style="background:#ff0000;color:#fff;border-color:#ff0000" onclick="openYtUploadModal('${escHtml(p.title)}','${escHtml(p.source||'manual')}','gaming','')">▶ YouTube</button>
         <button class="btn btn-danger btn-sm" onclick="deletePostFromDay('${p.id}', ${!!p.posted})">🗑 Delete</button>
       </div>
     </div>`).join('');
@@ -2349,6 +2644,7 @@ function renderLibraryCard(c) {
       <div class="clip-actions wrap" id="lib-actions-${c.id}">
         <button class="btn btn-primary btn-sm" onclick="scheduleFromLibrary(${escAttr(c)})">📅 Schedule</button>
         <button class="btn btn-success btn-sm" onclick="markLibraryClipPosted(${escAttr(c)})">✅ Mark as Posted</button>
+        <button class="btn btn-sm" style="background:#ff0000;color:#fff;border-color:#ff0000" onclick="openYtUploadModal('${escHtml(c.title)}','${escHtml(c.source)}','${escHtml(c.niche||'gaming')}','${escHtml(c.url)}')">▶ Post to YouTube</button>
         <button class="btn btn-danger btn-sm" onclick="removeFromLibrary('${c.id}')">🗑️ Remove</button>
       </div>
       <div id="lib-confirm-${c.id}" class="lib-confirm-panel" style="display:none">
@@ -2465,10 +2761,262 @@ async function executeHideClip() {
 }
 
 // ──────────────────────────────────────────────────────────────
+// YouTube
+// ──────────────────────────────────────────────────────────────
+let ytClipContext = { title: '', source: '', niche: 'gaming', url: '' };
+let ytCurrentStep = 1;
+let ytAuthStatus  = false;
+
+async function checkYtStatus() {
+  try {
+    const data = await apiFetch('/api/youtube/auth-status');
+    ytAuthStatus = data.authenticated;
+    const dot     = document.getElementById('yt-status-dot');
+    const connect = document.getElementById('yt-sidebar-connect');
+    if (dot) {
+      dot.classList.toggle('connected',    ytAuthStatus);
+      dot.classList.toggle('disconnected', !ytAuthStatus);
+    }
+    if (connect) connect.style.display = ytAuthStatus ? 'none' : 'block';
+    return data;
+  } catch(e) {
+    return { authenticated: false };
+  }
+}
+
+async function connectYouTube() {
+  try {
+    showToast('Opening browser for YouTube authentication…', 'info');
+    await apiFetch('/api/youtube/authenticate', { method: 'POST' });
+    // Poll until token appears
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      const st = await checkYtStatus();
+      if (st.authenticated) {
+        clearInterval(poll);
+        showToast('✅ YouTube connected!', 'success');
+        loadYtSettings();
+      } else if (attempts > 60) {
+        clearInterval(poll);
+        showToast('Authentication timed out. Please try again.', 'error');
+      }
+    }, 2000);
+  } catch(e) {
+    showToast('Failed to start authentication', 'error');
+  }
+}
+
+async function disconnectYouTube() {
+  try {
+    await apiFetch('/api/youtube/disconnect', { method: 'POST' });
+    ytAuthStatus = false;
+    await checkYtStatus();
+    loadYtSettings();
+    showToast('YouTube disconnected', 'info');
+  } catch(e) {
+    showToast('Failed to disconnect', 'error');
+  }
+}
+
+async function loadYtSettings() {
+  const data = await checkYtStatus();
+  const box          = document.getElementById('yt-settings-status-box');
+  const statusText   = document.getElementById('yt-settings-status-text');
+  const emailEl      = document.getElementById('yt-settings-email');
+  const connectBtn   = document.getElementById('yt-settings-connect-btn');
+  const disconnectBtn= document.getElementById('yt-settings-disconnect-btn');
+  if (!box) return;
+
+  if (data.authenticated) {
+    box.className = 'yt-settings-status connected';
+    statusText.textContent = 'Connected to YouTube';
+    if (data.email) {
+      emailEl.textContent = data.email;
+      emailEl.style.display = 'block';
+    } else {
+      emailEl.style.display = 'none';
+    }
+    connectBtn.style.display    = 'none';
+    disconnectBtn.style.display = '';
+  } else {
+    box.className = 'yt-settings-status disconnected';
+    statusText.textContent      = 'Not connected';
+    emailEl.style.display       = 'none';
+    connectBtn.style.display    = '';
+    disconnectBtn.style.display = 'none';
+  }
+}
+
+// ── Upload modal ───────────────────────────────────────────────
+function openYtUploadModal(title, source, niche, url) {
+  ytClipContext = { title, source, niche: niche || 'gaming', url };
+  ytCurrentStep = 1;
+
+  // Reset state
+  document.getElementById('yt-modal-title').textContent = '▶ Post to YouTube';
+  document.getElementById('yt-file-name').style.display = 'none';
+  document.getElementById('yt-file-name').textContent   = '';
+  document.getElementById('yt-file-input').value        = '';
+  document.getElementById('yt-generate-btn').disabled   = true;
+  document.getElementById('yt-meta-spinner').style.display = 'none';
+  document.getElementById('yt-meta-fields').style.display  = 'none';
+  document.getElementById('yt-upload-btn').disabled = true;
+  document.getElementById('yt-uploading-state').style.display = '';
+  document.getElementById('yt-done-state').style.display      = 'none';
+  document.getElementById('yt-progress-fill').style.width     = '0%';
+  document.getElementById('yt-upload-status').textContent     = 'Uploading your video…';
+
+  ytGoToStep(1);
+  openModal('modal-yt-upload');
+}
+
+function closeYtModal() {
+  closeModal('modal-yt-upload');
+}
+
+function ytGoToStep(step) {
+  ytCurrentStep = step;
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById('yt-step-'  + i).classList.toggle('active', i === step);
+    document.getElementById('yt-dot-'   + i).classList.toggle('active', i <= step);
+  }
+}
+
+function onYtFileSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const nameEl = document.getElementById('yt-file-name');
+  nameEl.textContent    = file.name;
+  nameEl.style.display  = 'block';
+  document.getElementById('yt-generate-btn').disabled = false;
+}
+
+// Drag-and-drop
+(function() {
+  function ready() {
+    const zone = document.getElementById('yt-drop-zone');
+    if (!zone) return;
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      const input = document.getElementById('yt-file-input');
+      const dt    = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      onYtFileSelected(input);
+    });
+  }
+  document.addEventListener('DOMContentLoaded', ready);
+  if (document.readyState !== 'loading') ready();
+})();
+
+function updateYtTitleCount() {
+  const input  = document.getElementById('yt-meta-title');
+  const count  = document.getElementById('yt-title-count');
+  const len    = input.value.length;
+  count.textContent = `${len}/60`;
+  count.classList.toggle('over', len > 60);
+}
+
+async function generateYtMetadata() {
+  ytGoToStep(2);
+  document.getElementById('yt-meta-spinner').style.display = 'block';
+  document.getElementById('yt-meta-fields').style.display  = 'none';
+  document.getElementById('yt-upload-btn').disabled = true;
+
+  try {
+    const meta = await apiFetch('/api/youtube/generate-metadata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clip_title:  ytClipContext.title,
+        clip_source: ytClipContext.source,
+        niche:       ytClipContext.niche,
+        clip_url:    ytClipContext.url,
+      }),
+    });
+
+    document.getElementById('yt-meta-title').value = meta.title || '';
+    document.getElementById('yt-meta-desc').value  = meta.description || '';
+    document.getElementById('yt-meta-tags').value  = Array.isArray(meta.tags) ? meta.tags.join(', ') : (meta.tags || '');
+    updateYtTitleCount();
+
+    document.getElementById('yt-meta-spinner').style.display = 'none';
+    document.getElementById('yt-meta-fields').style.display  = 'block';
+    document.getElementById('yt-upload-btn').disabled = false;
+  } catch(e) {
+    document.getElementById('yt-meta-spinner').style.display = 'none';
+    showToast('Failed to generate metadata: ' + (e.message || 'Unknown error'), 'error');
+    ytGoToStep(1);
+  }
+}
+
+async function startYtUpload() {
+  const file = document.getElementById('yt-file-input').files[0];
+  if (!file) { showToast('No video file selected', 'error'); return; }
+
+  const title  = document.getElementById('yt-meta-title').value.trim();
+  const desc   = document.getElementById('yt-meta-desc').value.trim();
+  const tags   = document.getElementById('yt-meta-tags').value.trim();
+
+  if (!title) { showToast('Please enter a title', 'error'); return; }
+
+  ytGoToStep(3);
+  document.getElementById('yt-uploading-state').style.display = '';
+  document.getElementById('yt-done-state').style.display      = 'none';
+
+  // Animate progress bar (fake progress while server uploads)
+  let fakeProgress = 0;
+  const progressEl = document.getElementById('yt-progress-fill');
+  const statusEl   = document.getElementById('yt-upload-status');
+  const fakeTimer  = setInterval(() => {
+    fakeProgress = Math.min(fakeProgress + Math.random() * 4, 90);
+    progressEl.style.width = fakeProgress + '%';
+    statusEl.textContent   = `Uploading… ${Math.round(fakeProgress)}%`;
+  }, 600);
+
+  try {
+    const fd = new FormData();
+    fd.append('video',       file);
+    fd.append('title',       title);
+    fd.append('description', desc);
+    fd.append('tags',        tags);
+    fd.append('category',    '20');
+
+    const result = await fetch('/api/youtube/upload', { method: 'POST', body: fd });
+    clearInterval(fakeTimer);
+    if (!result.ok) {
+      const err = await result.json().catch(() => ({}));
+      throw new Error(err.error || result.statusText);
+    }
+    const data = await result.json();
+
+    progressEl.style.width = '100%';
+    statusEl.textContent   = 'Upload complete!';
+
+    document.getElementById('yt-studio-link').href = data.studio_url;
+    setTimeout(() => {
+      document.getElementById('yt-uploading-state').style.display = 'none';
+      document.getElementById('yt-done-state').style.display      = 'block';
+    }, 500);
+  } catch(e) {
+    clearInterval(fakeTimer);
+    showToast('Upload failed: ' + (e.message || 'Unknown error'), 'error');
+    ytGoToStep(2);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // Boot
 // ──────────────────────────────────────────────────────────────
 loadDashboard();
 loadSavedClips();
+checkYtStatus();
 </script>
 </body>
 </html>

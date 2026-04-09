@@ -7,6 +7,7 @@ import json
 import os
 import uuid
 import threading
+import tempfile
 from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
@@ -462,6 +463,107 @@ def api_mark_posted(post_id):
         _save_json(HISTORY_FILE, history)
 
     return jsonify({'ok': True})
+
+
+# ═══════════════════════════════════════════════════════════════
+# Routes – YouTube
+# ═══════════════════════════════════════════════════════════════
+
+try:
+    from youtube_uploader import get_auth_status, get_youtube_service, generate_metadata, upload_video, revoke_token
+    YOUTUBE_AVAILABLE = True
+except Exception:
+    YOUTUBE_AVAILABLE = False
+
+_yt_auth_lock = threading.Lock()
+
+
+@app.route('/api/youtube/auth-status')
+def api_yt_auth_status():
+    if not YOUTUBE_AVAILABLE:
+        return jsonify({'authenticated': False, 'error': 'YouTube uploader not available'})
+    try:
+        auth, email = get_auth_status()
+        return jsonify({'authenticated': auth, 'email': email})
+    except Exception as e:
+        return jsonify({'authenticated': False, 'error': str(e)})
+
+
+@app.route('/api/youtube/authenticate', methods=['POST'])
+def api_yt_authenticate():
+    if not YOUTUBE_AVAILABLE:
+        return jsonify({'success': False, 'error': 'YouTube uploader not available'}), 500
+
+    def run_auth():
+        with _yt_auth_lock:
+            try:
+                get_youtube_service()
+            except Exception as e:
+                print(f'YouTube auth error: {e}')
+
+    threading.Thread(target=run_auth, daemon=True).start()
+    return jsonify({'success': True, 'message': 'OAuth flow started — check your browser'})
+
+
+@app.route('/api/youtube/disconnect', methods=['POST'])
+def api_yt_disconnect():
+    if not YOUTUBE_AVAILABLE:
+        return jsonify({'success': False, 'error': 'YouTube uploader not available'}), 500
+    try:
+        revoke_token()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/youtube/generate-metadata', methods=['POST'])
+def api_yt_generate_metadata():
+    if not YOUTUBE_AVAILABLE:
+        return jsonify({'error': 'YouTube uploader not available'}), 500
+    data = request.json or {}
+    clip_title  = data.get('clip_title', '')
+    clip_source = data.get('clip_source', '')
+    niche       = data.get('niche', 'gaming')
+    clip_url    = data.get('clip_url', '')
+    try:
+        meta = generate_metadata(clip_title, clip_source, niche, clip_url)
+        return jsonify(meta)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/youtube/upload', methods=['POST'])
+def api_yt_upload():
+    if not YOUTUBE_AVAILABLE:
+        return jsonify({'error': 'YouTube uploader not available'}), 500
+
+    video_file = request.files.get('video')
+    if not video_file:
+        return jsonify({'error': 'No video file provided'}), 400
+
+    title       = request.form.get('title', 'Untitled')
+    description = request.form.get('description', '')
+    tags_raw    = request.form.get('tags', '')
+    category    = request.form.get('category', '20')
+
+    tags = [t.strip() for t in tags_raw.split(',') if t.strip()] if tags_raw else []
+
+    # Save to a temp file
+    suffix = os.path.splitext(video_file.filename or 'video.mp4')[1] or '.mp4'
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        video_file.save(tmp.name)
+        tmp.close()
+        video_id, studio_url = upload_video(tmp.name, title, description, tags, category)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+
+    return jsonify({'video_id': video_id, 'studio_url': studio_url})
 
 
 # ═══════════════════════════════════════════════════════════════
