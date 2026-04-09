@@ -324,6 +324,41 @@ def api_library_notes(clip_id):
     return jsonify({'ok': True})
 
 
+@app.route('/api/library/undo-posted', methods=['POST'])
+def api_library_undo_posted():
+    data     = request.json or {}
+    clip_url = data.get('url', '')
+    niche    = data.get('niche', 'gaming')
+
+    # Remove the most-recent matching entry from history
+    history = load_json(HISTORY_FILE)
+    # Remove last occurrence matching the url
+    removed_one = False
+    new_history = []
+    for h in reversed(history):
+        if not removed_one and h.get('url') == clip_url:
+            removed_one = True  # skip (remove) this entry
+        else:
+            new_history.append(h)
+    _save_json(HISTORY_FILE, list(reversed(new_history)))
+
+    # Remove from the correct used_clips file
+    used_file = USED_CLIPS_VALORANT_FILE if niche == 'valorant' else USED_CLIPS_GAMING_FILE
+    used = load_json(used_file)
+    used = [u for u in used if u.get('url') != clip_url]
+    _save_json(used_file, used)
+
+    # Re-add to saved_clips.json (only if not already there)
+    clips = load_json(SAVED_FILE)
+    if not any(c.get('url') == clip_url for c in clips):
+        restore = {k: v for k, v in data.items()}
+        restore.setdefault('saved_at', datetime.now().isoformat())
+        clips.append(restore)
+        _save_json(SAVED_FILE, clips)
+
+    return jsonify({'ok': True})
+
+
 @app.route('/api/clips/hide', methods=['POST'])
 def api_hide_clip():
     data = request.json or {}

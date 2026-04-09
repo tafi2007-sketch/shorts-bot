@@ -886,10 +886,16 @@
       min-width: 200px;
       max-width: 340px;
     }
-    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
     .toast-success { background: #064E3B; border-color: rgba(16,185,129,.4); color: #6EE7B7; }
     .toast-error   { background: #450A0A; border-color: rgba(239,68,68,.4);  color: #FCA5A5; }
     .toast-info    { background: #1E1040; border-color: rgba(124,58,237,.4); color: #C4B5FD; }
+    .toast-undo-btn {
+      background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3);
+      color: inherit; padding: 3px 10px; border-radius: 4px; font-size: 12px;
+      font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .toast-undo-btn:hover { background: rgba(255,255,255,.3); }
 
     /* ══════════════════════════════════════════════════════════
        DIVIDER / MISC
@@ -2175,6 +2181,44 @@ function showToast(msg, type = 'info') {
   }, 3200);
 }
 
+function showToastWithUndo(msg, type, duration, onUndo) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.style.cssText = 'display:flex;align-items:center;gap:10px;max-width:400px;';
+
+  const msgSpan = document.createElement('span');
+  msgSpan.style.flex = '1';
+  msgSpan.textContent = msg;
+  el.appendChild(msgSpan);
+
+  let dismissed = false;
+  const undoBtn = document.createElement('button');
+  undoBtn.className = 'toast-undo-btn';
+  undoBtn.textContent = 'Undo';
+  undoBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (dismissed) return;
+    dismissed = true;
+    clearTimeout(timer);
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+    onUndo();
+  };
+  el.appendChild(undoBtn);
+
+  container.appendChild(el);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => el.classList.add('show'));
+  });
+  const timer = setTimeout(() => {
+    if (!dismissed) {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 300);
+    }
+  }, duration);
+}
+
 // ──────────────────────────────────────────────────────────────
 // API helper
 // ──────────────────────────────────────────────────────────────
@@ -2305,7 +2349,7 @@ function renderLibraryCard(c) {
       <textarea class="lib-notes" placeholder="Add notes…" onblur="saveLibraryNotes('${c.id}', this.value)">${notesEsc}</textarea>
       <div class="clip-actions wrap" id="lib-actions-${c.id}">
         <button class="btn btn-primary btn-sm" onclick="scheduleFromLibrary(${escAttr(c)})">📅 Schedule</button>
-        <button class="btn btn-success btn-sm" onclick="markLibraryClipPosted('${c.id}')">✅ Mark as Posted</button>
+        <button class="btn btn-success btn-sm" onclick="markLibraryClipPosted(${escAttr(c)})">✅ Mark as Posted</button>
         <button class="btn btn-danger btn-sm" onclick="removeFromLibrary('${c.id}')">🗑️ Remove</button>
       </div>
       <div id="lib-confirm-${c.id}" class="lib-confirm-panel" style="display:none">
@@ -2331,20 +2375,36 @@ async function saveLibraryNotes(id, notes) {
 }
 
 function scheduleFromLibrary(clip) {
-  document.getElementById('sched-title').value  = clip.title;
-  document.getElementById('sched-date').value   = todayStr();
-  document.getElementById('sched-time').value   = '12:00';
-  document.getElementById('sched-source').value = clip.source || 'manual';
-  document.getElementById('modal-schedule-title').textContent = 'Schedule Post';
-  openModal('modal-schedule');
+  showSection('scheduler', document.querySelector('[data-section=scheduler]'));
+  setTimeout(() => {
+    document.getElementById('sched-title').value  = clip.title;
+    document.getElementById('sched-date').value   = todayStr();
+    document.getElementById('sched-time').value   = '18:00';
+    document.getElementById('sched-source').value = clip.source || 'manual';
+    document.getElementById('modal-schedule-title').textContent = 'Schedule Post';
+    openModal('modal-schedule');
+  }, 300);
 }
 
-async function markLibraryClipPosted(id) {
+async function markLibraryClipPosted(clip) {
   try {
-    await apiFetch('/api/library/' + id + '/posted', {method: 'POST'});
+    await apiFetch('/api/library/' + clip.id + '/posted', {method: 'POST'});
     await loadLibrary();
     await loadDashboard();
-    showToast('Marked as posted! ✅', 'success');
+    showToastWithUndo('✅ Marked as posted!', 'success', 8000, async () => {
+      try {
+        await apiFetch('/api/library/undo-posted', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(clip)
+        });
+        await loadLibrary();
+        await loadDashboard();
+        showToast('↩️ Undone — clip restored to library', 'info');
+      } catch(e) {
+        showToast('Failed to undo', 'error');
+      }
+    });
   } catch(e) {
     showToast('Failed to mark as posted', 'error');
   }
