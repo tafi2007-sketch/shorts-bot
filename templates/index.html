@@ -2239,8 +2239,7 @@ function escHtml(str) {
 }
 
 function escAttr(obj) {
-  const json = JSON.stringify(obj);
-  return "'" + json.replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
+  return JSON.stringify(obj).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
 function fmtViews(n) {
