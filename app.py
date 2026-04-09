@@ -470,12 +470,13 @@ def api_mark_posted(post_id):
 # ═══════════════════════════════════════════════════════════════
 
 try:
-    from youtube_uploader import get_auth_status, get_youtube_service, generate_metadata, upload_video, revoke_token
+    from youtube_uploader import authenticate, get_auth_status, get_youtube_service, generate_metadata, upload_video, revoke_token
     YOUTUBE_AVAILABLE = True
 except Exception:
     YOUTUBE_AVAILABLE = False
 
 _yt_auth_lock = threading.Lock()
+_yt_auth_state = {'status': 'idle', 'error': None}  # idle | pending | success | error
 
 
 @app.route('/api/youtube/auth-status')
@@ -484,7 +485,7 @@ def api_yt_auth_status():
         return jsonify({'authenticated': False, 'error': 'YouTube uploader not available'})
     try:
         auth, email = get_auth_status()
-        return jsonify({'authenticated': auth, 'email': email})
+        return jsonify({'authenticated': auth, 'email': email, 'flow_status': _yt_auth_state['status']})
     except Exception as e:
         return jsonify({'authenticated': False, 'error': str(e)})
 
@@ -494,12 +495,21 @@ def api_yt_authenticate():
     if not YOUTUBE_AVAILABLE:
         return jsonify({'success': False, 'error': 'YouTube uploader not available'}), 500
 
+    with _yt_auth_lock:
+        if _yt_auth_state['status'] == 'pending':
+            return jsonify({'success': False, 'error': 'Authentication already in progress'}), 409
+        _yt_auth_state['status'] = 'pending'
+        _yt_auth_state['error'] = None
+
     def run_auth():
-        with _yt_auth_lock:
-            try:
-                get_youtube_service()
-            except Exception as e:
-                print(f'YouTube auth error: {e}')
+        try:
+            authenticate()
+            _yt_auth_state['status'] = 'success'
+            _yt_auth_state['error'] = None
+        except Exception as e:
+            _yt_auth_state['status'] = 'error'
+            _yt_auth_state['error'] = str(e)
+            print(f'YouTube auth error: {e}')
 
     threading.Thread(target=run_auth, daemon=True).start()
     return jsonify({'success': True, 'message': 'OAuth flow started — check your browser'})
