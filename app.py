@@ -382,6 +382,18 @@ def api_get_schedule():
     return jsonify(load_json(SCHEDULED_FILE))
 
 
+@app.route('/api/schedule/posted-dates')
+def api_posted_dates():
+    """Return dates that have custom uploads, for calendar highlighting."""
+    dates = set()
+    for h in load_json(HISTORY_FILE):
+        if h.get('source') == 'custom_upload' and h.get('posted_at'):
+            dates.add(h['posted_at'][:10])
+        elif h.get('source') == 'custom_upload' and h.get('date'):
+            dates.add(h['date'])
+    return jsonify(sorted(dates))
+
+
 @app.route('/api/schedule', methods=['POST'])
 def api_create_post():
     data = request.json or {}
@@ -562,6 +574,7 @@ def api_yt_upload():
     description = request.form.get('description', '')
     tags_raw    = request.form.get('tags', '')
     category    = request.form.get('category', '20')
+    niche       = request.form.get('niche', 'gaming')
 
     tags = [t.strip() for t in tags_raw.split(',') if t.strip()] if tags_raw else []
 
@@ -579,6 +592,20 @@ def api_yt_upload():
             os.unlink(tmp.name)
         except Exception:
             pass
+
+    # Record in posting history so dashboard/streak/scheduler pick it up
+    now = datetime.now()
+    history = load_json(HISTORY_FILE)
+    history.append({
+        'id':        str(uuid.uuid4()),
+        'title':     title,
+        'url':       f'https://youtube.com/watch?v={video_id}',
+        'niche':     niche,
+        'posted_at': now.isoformat(),
+        'date':      now.strftime('%Y-%m-%d'),
+        'source':    'custom_upload',
+    })
+    _save_json(HISTORY_FILE, history)
 
     return jsonify({'video_id': video_id, 'studio_url': studio_url})
 

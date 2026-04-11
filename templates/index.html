@@ -1809,6 +1809,7 @@
 let calYear  = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let scheduledPosts  = [];
+let postedDatesSet  = new Set(); // dates with posting history (custom uploads, library posts)
 let searchPollTimer = null;
 let selectedNiche   = 'gaming';
 let editingPostId   = null;
@@ -2102,7 +2103,12 @@ function openScheduleFromClip(clip) {
 // Scheduler / Calendar
 // ──────────────────────────────────────────────────────────────
 async function loadScheduler() {
-  scheduledPosts = await apiFetch('/api/schedule');
+  [scheduledPosts] = await Promise.all([
+    apiFetch('/api/schedule'),
+    apiFetch('/api/schedule/posted-dates').then(dates => {
+      postedDatesSet = new Set(dates);
+    }),
+  ]);
   renderCalendar();
   renderUpcoming();
   updateFrequency();
@@ -2142,10 +2148,11 @@ function renderCalendar() {
     );
 
     const dayPosts = postsByDate[dateStr] || [];
+    const hasHistoryPost = postedDatesSet.has(dateStr); // custom upload or library post
     const postedCount   = dayPosts.filter(p => p.posted).length;
     const unpostedCount = dayPosts.filter(p => !p.posted).length;
-    const allPosted     = dayPosts.length > 0 && postedCount === dayPosts.length;
-    const somePosted    = postedCount > 0 && unpostedCount > 0;
+    const allPosted     = (dayPosts.length > 0 && postedCount === dayPosts.length) || (dayPosts.length === 0 && hasHistoryPost);
+    const somePosted    = (postedCount > 0 && unpostedCount > 0) || (unpostedCount > 0 && hasHistoryPost);
 
     let cellClass = 'cal-cell';
     if (isToday)     cellClass += ' cal-today';
@@ -2165,7 +2172,12 @@ function renderCalendar() {
       if (dayPosts.length > MAX_VISIBLE) {
         postsHtml += `<div class="cal-day-post more">+ ${dayPosts.length - MAX_VISIBLE} more</div>`;
       }
+      if (hasHistoryPost && postedCount === 0) {
+        postsHtml += `<div class="cal-day-post posted">✅ Custom upload</div>`;
+      }
       content = `<div class="cal-day-posts">${postsHtml}</div>`;
+    } else if (hasHistoryPost) {
+      content = `<div class="cal-day-posts"><div class="cal-day-post posted">✅ Custom upload</div></div>`;
     } else {
       content = `<div class="cal-content"><span class="cal-add-hint">＋</span></div>`;
     }
@@ -3099,6 +3111,7 @@ async function startYtUpload() {
     fd.append('description', desc);
     fd.append('tags',        tags);
     fd.append('category',    '20');
+    fd.append('niche',       customUploadNiche || 'gaming');
 
     const result = await fetch('/api/youtube/upload', { method: 'POST', body: fd });
     clearInterval(fakeTimer);
