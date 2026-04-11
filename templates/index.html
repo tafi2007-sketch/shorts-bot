@@ -1135,6 +1135,54 @@
     }
     .yt-connect-btn:hover { background: rgba(255,0,0,.2); }
 
+    /* ── Upload Custom Clip sidebar button ────────────────── */
+    .upload-custom-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: calc(100% - 24px);
+      margin: 4px 12px 8px;
+      padding: 10px 14px;
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter var(--transition), transform var(--transition);
+    }
+    .upload-custom-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+    @media (max-width: 680px) { .upload-custom-btn span { display: none; } }
+
+    /* ── Niche selector inside YT modal ───────────────────── */
+    .yt-niche-selector {
+      display: none;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .yt-niche-selector.visible { display: flex; }
+    .yt-niche-btn {
+      flex: 1;
+      padding: 9px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-2);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .yt-niche-btn:hover { border-color: var(--border-h); color: var(--text); }
+    .yt-niche-btn.active {
+      background: var(--primary-dim);
+      border-color: rgba(124,58,237,.4);
+      color: #C4B5FD;
+      font-weight: 600;
+    }
+
     /* ══════════════════════════════════════════════════════════
        YOUTUBE UPLOAD MODAL
     ══════════════════════════════════════════════════════════ */
@@ -1336,6 +1384,10 @@
     <div id="yt-sidebar-connect" style="display:none">
       <button class="yt-connect-btn" onclick="connectYouTube()">🔗 Connect YouTube</button>
     </div>
+
+    <button class="upload-custom-btn" onclick="openCustomUploadModal()">
+      ⬆ <span>Upload Custom Clip</span>
+    </button>
 
     <div class="sidebar-footer">v1.0.0 · Local</div>
   </nav>
@@ -1666,6 +1718,13 @@
     <!-- ── Step 1: Select file ─────────────────── -->
     <div class="yt-step active" id="yt-step-1">
       <p style="color:var(--text-2);font-size:13px;margin-bottom:16px">Select your edited video file to upload to YouTube.</p>
+
+      <!-- Niche selector — only shown for custom uploads -->
+      <div id="yt-niche-selector" class="yt-niche-selector">
+        <button class="yt-niche-btn" id="yt-niche-gaming" onclick="selectUploadNiche('gaming')">🎮 General Gaming</button>
+        <button class="yt-niche-btn" id="yt-niche-valorant" onclick="selectUploadNiche('valorant')">🔫 Valorant</button>
+      </div>
+
       <div class="yt-file-drop" id="yt-drop-zone" onclick="document.getElementById('yt-file-input').click()">
         <div class="yt-file-drop-icon">🎬</div>
         <div class="yt-file-drop-text">Click to select a video file<br><span style="font-size:11px;opacity:.7">MP4, MOV, AVI supported</span></div>
@@ -1758,6 +1817,8 @@ let clipsMap        = {};        // id → clip object for search results
 let dayModalDate     = null;    // date string for the day modal
 let editReturnDate   = null;    // if set, re-open day modal after edit closes
 let scheduleReturnDate = null;  // if set, re-open day modal after schedule closes
+let isCustomUpload     = false; // true when opened via "Upload Custom Clip"
+let customUploadNiche  = null;  // 'gaming' | 'valorant' — chosen by niche selector
 
 // ──────────────────────────────────────────────────────────────
 // Navigation
@@ -2862,26 +2923,64 @@ async function loadYtSettings() {
 }
 
 // ── Upload modal ───────────────────────────────────────────────
+function _resetYtModal() {
+  document.getElementById('yt-file-name').style.display        = 'none';
+  document.getElementById('yt-file-name').textContent          = '';
+  document.getElementById('yt-file-input').value               = '';
+  document.getElementById('yt-generate-btn').disabled          = true;
+  document.getElementById('yt-meta-spinner').style.display     = 'none';
+  document.getElementById('yt-meta-fields').style.display      = 'none';
+  document.getElementById('yt-upload-btn').disabled            = true;
+  document.getElementById('yt-uploading-state').style.display  = '';
+  document.getElementById('yt-done-state').style.display       = 'none';
+  document.getElementById('yt-progress-fill').style.width      = '0%';
+  document.getElementById('yt-upload-status').textContent      = 'Uploading your video…';
+}
+
 function openYtUploadModal(title, source, niche, url) {
+  isCustomUpload = false;
+  customUploadNiche = null;
   ytClipContext = { title, source, niche: niche || 'gaming', url };
   ytCurrentStep = 1;
 
-  // Reset state
   document.getElementById('yt-modal-title').textContent = '▶ Post to YouTube';
-  document.getElementById('yt-file-name').style.display = 'none';
-  document.getElementById('yt-file-name').textContent   = '';
-  document.getElementById('yt-file-input').value        = '';
-  document.getElementById('yt-generate-btn').disabled   = true;
-  document.getElementById('yt-meta-spinner').style.display = 'none';
-  document.getElementById('yt-meta-fields').style.display  = 'none';
-  document.getElementById('yt-upload-btn').disabled = true;
-  document.getElementById('yt-uploading-state').style.display = '';
-  document.getElementById('yt-done-state').style.display      = 'none';
-  document.getElementById('yt-progress-fill').style.width     = '0%';
-  document.getElementById('yt-upload-status').textContent     = 'Uploading your video…';
+  document.getElementById('yt-niche-selector').classList.remove('visible');
+  document.getElementById('yt-niche-gaming').classList.remove('active');
+  document.getElementById('yt-niche-valorant').classList.remove('active');
+  _resetYtModal();
 
   ytGoToStep(1);
   openModal('modal-yt-upload');
+}
+
+function openCustomUploadModal() {
+  isCustomUpload = true;
+  customUploadNiche = null;
+  ytClipContext = { title: '', source: 'custom', niche: null, url: '' };
+  ytCurrentStep = 1;
+
+  document.getElementById('yt-modal-title').textContent = '⬆ Upload Custom Clip';
+  document.getElementById('yt-niche-selector').classList.add('visible');
+  document.getElementById('yt-niche-gaming').classList.remove('active');
+  document.getElementById('yt-niche-valorant').classList.remove('active');
+  _resetYtModal();
+
+  ytGoToStep(1);
+  openModal('modal-yt-upload');
+}
+
+function selectUploadNiche(niche) {
+  customUploadNiche = niche;
+  ytClipContext.niche = niche;
+  document.getElementById('yt-niche-gaming').classList.toggle('active', niche === 'gaming');
+  document.getElementById('yt-niche-valorant').classList.toggle('active', niche === 'valorant');
+  _updateYtGenerateBtn();
+}
+
+function _updateYtGenerateBtn() {
+  const hasFile  = !!document.getElementById('yt-file-input').files[0];
+  const hasNiche = !isCustomUpload || !!customUploadNiche;
+  document.getElementById('yt-generate-btn').disabled = !(hasFile && hasNiche);
 }
 
 function closeYtModal() {
@@ -2900,9 +2999,9 @@ function onYtFileSelected(input) {
   const file = input.files[0];
   if (!file) return;
   const nameEl = document.getElementById('yt-file-name');
-  nameEl.textContent    = file.name;
-  nameEl.style.display  = 'block';
-  document.getElementById('yt-generate-btn').disabled = false;
+  nameEl.textContent   = file.name;
+  nameEl.style.display = 'block';
+  _updateYtGenerateBtn();
 }
 
 // Drag-and-drop
