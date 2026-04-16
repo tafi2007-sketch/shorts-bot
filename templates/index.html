@@ -428,6 +428,93 @@
       color: #fff;
       box-shadow: 0 4px 16px var(--primary-glow);
     }
+
+    /* Valorant sub-tabs (Recent / All-Time Classics) */
+    .val-subtabs {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 12px;
+      margin-bottom: 0;
+    }
+    .val-subtabs.visible { display: flex; }
+    .subtab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-2);
+      transition: all var(--transition);
+      cursor: pointer;
+    }
+    .subtab-btn:hover { border-color: var(--primary); color: var(--text); }
+    .subtab-btn.active {
+      background: rgba(124,58,237,.18);
+      border-color: var(--primary);
+      color: var(--text);
+    }
+
+    /* All-Time Classics panel */
+    #classics-panel { margin-top: 24px; }
+    .classics-year-section { margin-bottom: 32px; }
+    .classics-year-header {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      padding: 8px 0 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .classics-year-header .year-badge {
+      background: var(--primary-dim);
+      color: var(--primary);
+      border: 1px solid rgba(124,58,237,.3);
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .classics-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      transition: border-color var(--transition);
+    }
+    .classics-card:hover { border-color: var(--border-h); }
+    .classics-rank {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--warning);
+      margin-bottom: 4px;
+    }
+    .classics-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .classics-meta {
+      font-size: 12px;
+      color: var(--text-2);
+      margin-bottom: 10px;
+    }
+    .classics-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .used-badge {
       font-size: 11px;
       color: var(--warning);
@@ -1446,20 +1533,44 @@
             <button class="niche-btn" id="niche-valorant" onclick="selectNiche('valorant')">🔫 Valorant</button>
           </div>
 
-          <button class="btn btn-primary" id="search-btn" onclick="startSearch()">
-            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Search for Clips
-          </button>
-          <div class="search-spinner" id="search-spinner">
-            <div class="spinner-ring"></div>
-            <span id="search-spinner-text">Searching Twitch &amp; Reddit for General Gaming clips…</span>
+          <!-- Sub-tabs: only shown when Valorant niche is active -->
+          <div class="val-subtabs" id="val-subtabs">
+            <button class="subtab-btn active" id="subtab-recent" onclick="selectValSubtab('recent')">🔍 Recent Clips</button>
+            <button class="subtab-btn" id="subtab-classics" onclick="selectValSubtab('classics')">⭐ All-Time Classics</button>
+          </div>
+
+          <!-- Search button + spinner (hidden when classics tab is active) -->
+          <div id="recent-search-controls" style="margin-top:16px">
+            <button class="btn btn-primary" id="search-btn" onclick="startSearch()">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Search for Clips
+            </button>
+            <div class="search-spinner" id="search-spinner">
+              <div class="spinner-ring"></div>
+              <span id="search-spinner-text">Searching Twitch &amp; Reddit for General Gaming clips…</span>
+            </div>
+          </div>
+
+          <!-- Classics load button (hidden by default) -->
+          <div id="classics-load-controls" style="display:none;margin-top:16px">
+            <button class="btn btn-primary" id="classics-load-btn" onclick="loadAllTimeClassics()">
+              ⭐ Load All-Time Classics
+            </button>
+            <div class="search-spinner" id="classics-spinner">
+              <div class="spinner-ring"></div>
+              <span>Loading all-time classics…</span>
+            </div>
           </div>
         </div>
 
+        <!-- Recent clips results -->
         <div id="search-results-wrap" style="display:none">
           <div class="section-heading" id="results-heading">Results</div>
           <div class="clips-grid" id="clips-grid"></div>
         </div>
+
+        <!-- All-Time Classics panel -->
+        <div id="classics-panel" style="display:none"></div>
 
         <div class="divider"></div>
 
@@ -1915,6 +2026,46 @@ function selectNiche(niche) {
   const label = niche === 'valorant' ? 'Valorant' : 'General Gaming';
   document.getElementById('search-spinner-text').textContent =
     `Searching Twitch & Reddit for ${label} clips\u2026`;
+
+  // Show/hide Valorant sub-tabs
+  const subtabs = document.getElementById('val-subtabs');
+  if (niche === 'valorant') {
+    subtabs.classList.add('visible');
+    // Reset to recent tab when switching to Valorant
+    selectValSubtab('recent');
+  } else {
+    subtabs.classList.remove('visible');
+    // Always show recent search controls for non-Valorant
+    document.getElementById('recent-search-controls').style.display = '';
+    document.getElementById('classics-load-controls').style.display = 'none';
+    document.getElementById('classics-panel').style.display = 'none';
+    document.getElementById('search-results-wrap').style.display = 'none';
+  }
+}
+
+let valSubtab = 'recent'; // 'recent' | 'classics'
+
+function selectValSubtab(tab) {
+  valSubtab = tab;
+  document.getElementById('subtab-recent').classList.toggle('active', tab === 'recent');
+  document.getElementById('subtab-classics').classList.toggle('active', tab === 'classics');
+
+  if (tab === 'recent') {
+    document.getElementById('recent-search-controls').style.display = '';
+    document.getElementById('classics-load-controls').style.display = 'none';
+    document.getElementById('classics-panel').style.display = 'none';
+    document.getElementById('search-results-wrap').style.display =
+      document.getElementById('clips-grid').innerHTML ? 'block' : 'none';
+  } else {
+    document.getElementById('recent-search-controls').style.display = 'none';
+    document.getElementById('classics-load-controls').style.display = '';
+    document.getElementById('search-results-wrap').style.display = 'none';
+    const panel = document.getElementById('classics-panel');
+    panel.style.display = 'block';
+    if (!classicsLoaded) {
+      // Show panel but empty — user hits the button
+    }
+  }
 }
 
 async function startSearch() {
@@ -2810,10 +2961,33 @@ function confirmHideClip(clipId) {
 
 function cancelHideClip() {
   pendingHideClipId = null;
+  pendingHideClassicInfo = null;
   closeModal('modal-hide-clip');
 }
 
 async function executeHideClip() {
+  // Classics clip hide
+  if (pendingHideClassicInfo) {
+    const { url, year, cardEl } = pendingHideClassicInfo;
+    pendingHideClassicInfo = null;
+    try {
+      await apiFetch('/api/clips/hide', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ url })
+      });
+      closeModal('modal-hide-clip');
+      if (cardEl) cardEl.remove();
+      yearVisibleCount[year] = (yearVisibleCount[year] || 1) - 1;
+      yearOffsets[year] = (yearOffsets[year] || 10) + 1;
+      showToast('Clip hidden forever', 'info');
+      await fetchReplacementClassic(year);
+    } catch(e) {
+      showToast('Failed to hide clip', 'error');
+    }
+    return;
+  }
+  // Regular clip hide
   if (!pendingHideClipId) return;
   const card = document.getElementById('clip-' + pendingHideClipId);
   const url  = card ? card.dataset.url : null;
@@ -2830,6 +3004,162 @@ async function executeHideClip() {
     showToast('Clip hidden forever', 'info');
   } catch(e) {
     showToast('Failed to hide clip', 'error');
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// All-Time Classics
+// ──────────────────────────────────────────────────────────────
+const CLASSICS_YEARS = [2021, 2022, 2023, 2024, 2025];
+let classicsLoaded = false;
+// yearOffsets[year] = how many clips have been shown+hidden for that year
+let yearOffsets = {};
+// yearVisibleCount[year] = how many clip cards are currently visible for that year
+let yearVisibleCount = {};
+// classicsClipMap: cardKey -> clip data (avoids inline attribute encoding issues)
+let classicsClipMap = {};
+
+// pendingHideClassicInfo: { url, year, cardEl }
+let pendingHideClassicInfo = null;
+
+async function loadAllTimeClassics() {
+  if (classicsLoaded) return;
+  const btn     = document.getElementById('classics-load-btn');
+  const spinner = document.getElementById('classics-spinner');
+  btn.style.display = 'none';
+  spinner.classList.add('active');
+
+  const panel = document.getElementById('classics-panel');
+  panel.innerHTML = '';
+
+  try {
+    // Fetch all years in parallel
+    const fetches = CLASSICS_YEARS.map(y =>
+      apiFetch(`/api/clips/classics?year=${y}&offset=0`).then(d => ({ year: y, data: d }))
+    );
+    const results = await Promise.all(fetches);
+
+    for (const { year, data } of results) {
+      yearOffsets[year] = data.clips.length;
+      yearVisibleCount[year] = data.clips.length;
+      panel.appendChild(buildYearSection(year, data.clips));
+    }
+
+    classicsLoaded = true;
+    spinner.classList.remove('active');
+  } catch(e) {
+    spinner.classList.remove('active');
+    btn.style.display = '';
+    showToast('Failed to load classics', 'error');
+  }
+}
+
+function buildYearSection(year, clips) {
+  const section = document.createElement('div');
+  section.className = 'classics-year-section';
+  section.id = `classics-year-${year}`;
+
+  section.innerHTML = `
+    <div class="classics-year-header">
+      ⭐ All-Time Classics
+      <span class="year-badge">${year}</span>
+    </div>
+    <div class="classics-year-clips" id="classics-clips-${year}"></div>
+  `;
+
+  const clipsContainer = section.querySelector(`#classics-clips-${year}`);
+  if (!clips || clips.length === 0) {
+    clipsContainer.innerHTML = `<div class="empty-state" style="padding:20px 0"><div class="empty-text">No clips found for ${year}</div></div>`;
+  } else {
+    clips.forEach(c => clipsContainer.appendChild(buildClassicCard(c, year)));
+  }
+  return section;
+}
+
+function buildClassicCard(clip, year) {
+  const card = document.createElement('div');
+  card.className = 'classics-card';
+  // Use a numeric key to avoid URL encoding issues in onclick attrs
+  const key = `${year}_${clip.rank}`;
+  classicsClipMap[key] = clip;
+  card.dataset.url = clip.url;
+  card.dataset.year = year;
+  card.dataset.classicKey = key;
+
+  card.innerHTML = `
+    <div class="classics-rank">#${clip.rank} All-Time ${year}</div>
+    <div class="classics-title">${escHtml(clip.title)}</div>
+    <div class="classics-meta">👁 ${fmtViews(clip.view_count)} views</div>
+    <div class="classics-actions">
+      <a class="btn btn-ghost btn-sm" href="${escHtml(clip.url)}" target="_blank" rel="noreferrer">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Preview
+      </a>
+      <button class="btn btn-primary btn-sm classic-save-btn" onclick="saveClassicClip(this, '${key}')">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save to Library
+      </button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:rgba(239,68,68,.3)"
+        onclick="confirmHideClassicClip('${key}', this.closest('.classics-card'))">
+        🚫 Don't Show Again
+      </button>
+    </div>
+  `;
+  return card;
+}
+
+async function saveClassicClip(btnEl, key) {
+  const clip = classicsClipMap[key];
+  if (!clip) { showToast('Clip not found', 'error'); return; }
+  btnEl.disabled = true;
+  btnEl.style.opacity = '.5';
+  try {
+    await apiFetch('/api/library/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title:      clip.title,
+        url:        clip.url,
+        source:     'twitch',
+        game_name:  'Valorant',
+        view_count: clip.view_count,
+        niche:      'valorant',
+      })
+    });
+    btnEl.replaceWith(Object.assign(document.createElement('span'), {
+      className: 'saved-badge', textContent: '✓ Saved'
+    }));
+    showToast('✅ Saved to Library!', 'success');
+    if (document.getElementById('section-library').classList.contains('active')) {
+      await loadLibrary();
+    }
+  } catch(e) {
+    btnEl.disabled = false;
+    btnEl.style.opacity = '1';
+    showToast('Failed to save clip', 'error');
+  }
+}
+
+function confirmHideClassicClip(key, cardEl) {
+  const clip = classicsClipMap[key];
+  if (!clip) return;
+  pendingHideClassicInfo = { url: clip.url, year: clip.year, cardEl };
+  openModal('modal-hide-clip');
+}
+
+async function fetchReplacementClassic(year) {
+  const offset = yearOffsets[year] || 10;
+  try {
+    const data = await apiFetch(`/api/clips/classics?year=${year}&offset=${offset}`);
+    if (data.clips && data.clips.length > 0) {
+      const clip = data.clips[0];
+      yearOffsets[year] = offset + 1;
+      yearVisibleCount[year] = (yearVisibleCount[year] || 0) + 1;
+      const container = document.getElementById(`classics-clips-${year}`);
+      if (container) container.appendChild(buildClassicCard(clip, year));
+    }
+  } catch(e) {
+    // silently ignore if no replacement available
   }
 }
 

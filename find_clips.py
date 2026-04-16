@@ -664,6 +664,60 @@ def search_general_gaming() -> tuple[list, list]:
     return _dedup(twitch_clips), _dedup(reddit_clips)
 
 
+def fetch_valorant_classics(year: int, offset: int = 0, limit: int = 10) -> list:
+    """Fetch all-time top Valorant clips for a specific year, sorted by view count."""
+    client_id = os.getenv("TWITCH_CLIENT_ID")
+    token = get_twitch_token()
+    if not token or not client_id:
+        return []
+
+    url = f"https://api.twitch.tv/helix/clips?game_id=516575&first=100&language=en&started_at={year}-01-01T00:00:00Z&ended_at={year}-12-31T23:59:59Z"
+    try:
+        resp = requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Client-Id":     client_id,
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        raw = resp.json().get("data", [])
+    except Exception:
+        return []
+
+    raw.sort(key=lambda c: c.get("view_count", 0), reverse=True)
+
+    used_valorant = load_used_clips(USED_CLIPS_VALORANT_FILE)
+    hidden_clips: set[str] = set()
+    hidden_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hidden_clips.json")
+    if os.path.exists(hidden_path):
+        try:
+            with open(hidden_path, "r", encoding="utf-8") as f:
+                hidden_clips = set(json.load(f))
+        except Exception:
+            hidden_clips = set()
+
+    filtered = []
+    for rank, c in enumerate(raw, start=1):
+        clip_url = c.get("url", "")
+        if not clip_url:
+            continue
+        if clip_url in used_valorant or clip_url in hidden_clips:
+            continue
+        filtered.append({
+            "title":      c.get("title", "No title"),
+            "url":        clip_url,
+            "view_count": c.get("view_count", 0),
+            "game_name":  "Valorant",
+            "source":     "twitch",
+            "year":       year,
+            "rank":       rank,
+        })
+
+    return filtered[offset: offset + limit]
+
+
 def search_valorant() -> tuple[list, list]:
     """Fetch Valorant-specific clips from all sources. Returns (twitch_clips, reddit_clips)."""
     twitch_clips: list = []

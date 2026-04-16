@@ -24,7 +24,7 @@ USED_CLIPS_VALORANT_FILE= 'used_clips_valorant.json'
 try:
     from find_clips import (
         search_general_gaming, search_valorant,
-        load_used_clips,
+        load_used_clips, fetch_valorant_classics,
     )
     CLIPS_AVAILABLE = True
 except Exception:
@@ -358,6 +358,19 @@ def api_library_undo_posted():
         _save_json(SAVED_FILE, clips)
 
     return jsonify({'ok': True})
+
+
+@app.route('/api/clips/classics')
+def api_clips_classics():
+    try:
+        year   = int(request.args.get('year', 2024))
+        offset = int(request.args.get('offset', 0))
+    except ValueError:
+        return jsonify({'error': 'Invalid params'}), 400
+    if not CLIPS_AVAILABLE:
+        return jsonify({'clips': [], 'total_fetched': 0})
+    clips = fetch_valorant_classics(year, offset=offset, limit=10)
+    return jsonify({'clips': clips, 'total_fetched': offset + len(clips)})
 
 
 @app.route('/api/clips/hide', methods=['POST'])
