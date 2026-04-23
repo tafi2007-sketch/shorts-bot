@@ -718,6 +718,112 @@ def fetch_valorant_classics(year: int, offset: int = 0, limit: int = 10) -> list
     return filtered[offset: offset + limit]
 
 
+REDDIT_VIDEO_DOMAINS = [
+    "twitch.tv", "clips.twitch.tv", "streamable.com",
+    "medal.tv", "youtube.com", "youtu.be",
+]
+
+
+def fetch_valorant_reddit_classics(offset: int = 0, limit: int = 10) -> list:
+    """Fetch all-time top Valorant Reddit posts sorted by upvotes.
+
+    Pulls from Valorant-specific subreddits (unfiltered) and general subreddits
+    filtered by Valorant keywords. Only includes posts from 2023 onwards that
+    contain a recognised video/clip link. Filters out hidden and used clips.
+    """
+    api_headers = {"User-Agent": "ShortsBot/1.0"}
+    cutoff_ts = datetime(2023, 1, 1, tzinfo=timezone.utc).timestamp()
+    kw_lower = [k.lower() for k in VALORANT_KEYWORDS]
+
+    def fetch_sub(subreddit: str, filter_kw: bool) -> list:
+        url = f"https://www.reddit.com/r/{subreddit}/top.json?t=all&limit=100"
+        try:
+            resp = requests.get(url, headers=api_headers, timeout=15)
+            if resp.status_code == 429:
+                return []
+            resp.raise_for_status()
+            children = resp.json().get("data", {}).get("children", [])
+        except Exception:
+            return []
+
+        out = []
+        for child in children:
+            p = child.get("data", {})
+            if p.get("created_utc", 0) < cutoff_ts:
+                continue
+
+            post_url = p.get("url", "")
+            is_reddit_video = p.get("is_video", False)
+
+            # Only keep posts that link to a video platform or are native reddit videos
+            if not is_reddit_video and not any(d in post_url for d in REDDIT_VIDEO_DOMAINS):
+                continue
+
+            title = p.get("title", "No title")
+            if filter_kw and not any(k in title.lower() for k in kw_lower):
+                continue
+
+            # For native reddit videos use the permalink as the canonical URL
+            permalink = p.get("permalink", "")
+            clip_url = f"https://reddit.com{permalink}" if is_reddit_video else post_url
+
+            out.append({
+                "title":        title,
+                "url":          clip_url,
+                "score":        p.get("score", 0),
+                "subreddit":    subreddit,
+                "source":       "reddit",
+                "created_date": datetime.fromtimestamp(
+                    p.get("created_utc", 0), tz=timezone.utc
+                ).strftime("%Y-%m-%d"),
+            })
+        return out
+
+    results: dict[str, list] = {}
+
+    def worker(sub: str, fkw: bool):
+        results[sub] = fetch_sub(sub, fkw)
+
+    threads = []
+    for sub in VALORANT_SUBREDDITS_SPECIFIC:
+        t = threading.Thread(target=worker, args=(sub, False), daemon=True)
+        threads.append(t); t.start()
+    for sub in VALORANT_SUBREDDITS_FILTERED:
+        t = threading.Thread(target=worker, args=(sub, True), daemon=True)
+        threads.append(t); t.start()
+    for t in threads:
+        t.join()
+
+    all_posts: list = []
+    for sub in VALORANT_SUBREDDITS_SPECIFIC + VALORANT_SUBREDDITS_FILTERED:
+        all_posts.extend(results.get(sub, []))
+
+    # Deduplicate by URL
+    seen: set[str] = set()
+    deduped = []
+    for p in all_posts:
+        if p["url"] not in seen:
+            seen.add(p["url"])
+            deduped.append(p)
+
+    # Sort by score descending
+    deduped.sort(key=lambda p: p["score"], reverse=True)
+
+    # Filter out hidden and already-used clips
+    used_valorant = load_used_clips(USED_CLIPS_VALORANT_FILE)
+    hidden_clips: set[str] = set()
+    hidden_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hidden_clips.json")
+    if os.path.exists(hidden_path):
+        try:
+            with open(hidden_path, "r", encoding="utf-8") as f:
+                hidden_clips = set(json.load(f))
+        except Exception:
+            pass
+
+    filtered = [p for p in deduped if p["url"] not in used_valorant and p["url"] not in hidden_clips]
+    return filtered[offset: offset + limit]
+
+
 def search_valorant() -> tuple[list, list]:
     """Fetch Valorant-specific clips from all sources. Returns (twitch_clips, reddit_clips)."""
     twitch_clips: list = []

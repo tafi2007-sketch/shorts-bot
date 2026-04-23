@@ -460,6 +460,78 @@
       color: var(--text);
     }
 
+    /* Classics sub-tabs (Twitch / Reddit) */
+    .classics-subtabs {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .classics-subtabs.visible { display: flex; }
+    .classics-subtab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 11.5px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-2);
+      transition: all var(--transition);
+      cursor: pointer;
+    }
+    .classics-subtab-btn:hover { border-color: var(--primary); color: var(--text); }
+    .classics-subtab-btn.active {
+      background: rgba(124,58,237,.18);
+      border-color: var(--primary);
+      color: var(--text);
+    }
+
+    /* Reddit Classics panel */
+    #reddit-classics-panel { margin-top: 24px; }
+    .reddit-classic-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      transition: border-color var(--transition);
+    }
+    .reddit-classic-card:hover { border-color: var(--border-h); }
+    .reddit-classic-subreddit {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      background: var(--reddit-dim);
+      color: var(--reddit);
+      border: 1px solid rgba(34,197,94,.3);
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-bottom: 6px;
+    }
+    .reddit-classic-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .reddit-classic-meta {
+      font-size: 12px;
+      color: var(--text-2);
+      margin-bottom: 10px;
+    }
+    .reddit-classic-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     /* All-Time Classics panel */
     #classics-panel { margin-top: 24px; }
     .classics-year-section { margin-bottom: 32px; }
@@ -1551,6 +1623,12 @@
             </div>
           </div>
 
+          <!-- Classics sub-tabs: Twitch / Reddit (shown when All-Time Classics tab active) -->
+          <div class="classics-subtabs" id="classics-subtabs">
+            <button class="classics-subtab-btn active" id="classics-subtab-twitch" onclick="selectClassicsSubtab('twitch')">⚡ Twitch Classics</button>
+            <button class="classics-subtab-btn" id="classics-subtab-reddit" onclick="selectClassicsSubtab('reddit')">🔴 Reddit Classics</button>
+          </div>
+
           <!-- Classics load button (hidden by default) -->
           <div id="classics-load-controls" style="display:none;margin-top:16px">
             <button class="btn btn-primary" id="classics-load-btn" onclick="loadAllTimeClassics()">
@@ -1561,6 +1639,17 @@
               <span>Loading all-time classics…</span>
             </div>
           </div>
+
+          <!-- Reddit Classics load button (hidden by default) -->
+          <div id="reddit-classics-load-controls" style="display:none;margin-top:16px">
+            <button class="btn btn-primary" id="reddit-classics-load-btn" onclick="loadRedditClassics()">
+              🔴 Load Reddit Classics
+            </button>
+            <div class="search-spinner" id="reddit-classics-spinner">
+              <div class="spinner-ring"></div>
+              <span>Loading Reddit classics…</span>
+            </div>
+          </div>
         </div>
 
         <!-- Recent clips results -->
@@ -1569,8 +1658,11 @@
           <div class="clips-grid" id="clips-grid"></div>
         </div>
 
-        <!-- All-Time Classics panel -->
+        <!-- All-Time Classics panel (Twitch) -->
         <div id="classics-panel" style="display:none"></div>
+
+        <!-- Reddit Classics panel -->
+        <div id="reddit-classics-panel" style="display:none"></div>
 
         <div class="divider"></div>
 
@@ -2039,6 +2131,9 @@ function selectNiche(niche) {
     document.getElementById('recent-search-controls').style.display = '';
     document.getElementById('classics-load-controls').style.display = 'none';
     document.getElementById('classics-panel').style.display = 'none';
+    document.getElementById('reddit-classics-load-controls').style.display = 'none';
+    document.getElementById('reddit-classics-panel').style.display = 'none';
+    document.getElementById('classics-subtabs').classList.remove('visible');
     document.getElementById('search-results-wrap').style.display = 'none';
   }
 }
@@ -2054,17 +2149,17 @@ function selectValSubtab(tab) {
     document.getElementById('recent-search-controls').style.display = '';
     document.getElementById('classics-load-controls').style.display = 'none';
     document.getElementById('classics-panel').style.display = 'none';
+    document.getElementById('reddit-classics-load-controls').style.display = 'none';
+    document.getElementById('reddit-classics-panel').style.display = 'none';
+    document.getElementById('classics-subtabs').classList.remove('visible');
     document.getElementById('search-results-wrap').style.display =
       document.getElementById('clips-grid').innerHTML ? 'block' : 'none';
   } else {
     document.getElementById('recent-search-controls').style.display = 'none';
-    document.getElementById('classics-load-controls').style.display = '';
     document.getElementById('search-results-wrap').style.display = 'none';
-    const panel = document.getElementById('classics-panel');
-    panel.style.display = 'block';
-    if (!classicsLoaded) {
-      // Show panel but empty — user hits the button
-    }
+    document.getElementById('classics-subtabs').classList.add('visible');
+    // Default to twitch sub-tab when first entering All-Time Classics
+    selectClassicsSubtab(classicsSubtab);
   }
 }
 
@@ -2966,8 +3061,8 @@ function cancelHideClip() {
 }
 
 async function executeHideClip() {
-  // Classics clip hide
-  if (pendingHideClassicInfo) {
+  // Classics clip hide (Twitch)
+  if (pendingHideClassicInfo && pendingHideClassicInfo.type === 'twitch') {
     const { url, year, cardEl } = pendingHideClassicInfo;
     pendingHideClassicInfo = null;
     try {
@@ -2982,6 +3077,26 @@ async function executeHideClip() {
       yearOffsets[year] = (yearOffsets[year] || 10) + 1;
       showToast('Clip hidden forever', 'info');
       await fetchReplacementClassic(year);
+    } catch(e) {
+      showToast('Failed to hide clip', 'error');
+    }
+    return;
+  }
+  // Reddit Classics clip hide
+  if (pendingHideClassicInfo && pendingHideClassicInfo.type === 'reddit') {
+    const { url, cardEl } = pendingHideClassicInfo;
+    pendingHideClassicInfo = null;
+    try {
+      await apiFetch('/api/clips/hide', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ url })
+      });
+      closeModal('modal-hide-clip');
+      if (cardEl) cardEl.remove();
+      redditClassicsOffset += 1;
+      showToast('Clip hidden forever', 'info');
+      await fetchReplacementRedditClassic();
     } catch(e) {
       showToast('Failed to hide clip', 'error');
     }
@@ -3004,6 +3119,29 @@ async function executeHideClip() {
     showToast('Clip hidden forever', 'info');
   } catch(e) {
     showToast('Failed to hide clip', 'error');
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Classics sub-tab switcher (Twitch / Reddit)
+// ──────────────────────────────────────────────────────────────
+let classicsSubtab = 'twitch'; // 'twitch' | 'reddit'
+
+function selectClassicsSubtab(tab) {
+  classicsSubtab = tab;
+  document.getElementById('classics-subtab-twitch').classList.toggle('active', tab === 'twitch');
+  document.getElementById('classics-subtab-reddit').classList.toggle('active', tab === 'reddit');
+
+  if (tab === 'twitch') {
+    document.getElementById('classics-load-controls').style.display = classicsLoaded ? 'none' : '';
+    document.getElementById('classics-panel').style.display = 'block';
+    document.getElementById('reddit-classics-load-controls').style.display = 'none';
+    document.getElementById('reddit-classics-panel').style.display = 'none';
+  } else {
+    document.getElementById('classics-load-controls').style.display = 'none';
+    document.getElementById('classics-panel').style.display = 'none';
+    document.getElementById('reddit-classics-load-controls').style.display = redditClassicsLoaded ? 'none' : '';
+    document.getElementById('reddit-classics-panel').style.display = 'block';
   }
 }
 
@@ -3143,7 +3281,7 @@ async function saveClassicClip(btnEl, key) {
 function confirmHideClassicClip(key, cardEl) {
   const clip = classicsClipMap[key];
   if (!clip) return;
-  pendingHideClassicInfo = { url: clip.url, year: clip.year, cardEl };
+  pendingHideClassicInfo = { type: 'twitch', url: clip.url, year: clip.year, cardEl };
   openModal('modal-hide-clip');
 }
 
@@ -3160,6 +3298,124 @@ async function fetchReplacementClassic(year) {
     }
   } catch(e) {
     // silently ignore if no replacement available
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Reddit Classics
+// ──────────────────────────────────────────────────────────────
+let redditClassicsLoaded = false;
+let redditClassicsOffset = 0;
+// redditClipMap: key -> clip data
+let redditClipMap = {};
+let redditClipCounter = 0;
+
+async function loadRedditClassics() {
+  if (redditClassicsLoaded) return;
+  const btn     = document.getElementById('reddit-classics-load-btn');
+  const spinner = document.getElementById('reddit-classics-spinner');
+  btn.style.display = 'none';
+  spinner.classList.add('active');
+
+  const panel = document.getElementById('reddit-classics-panel');
+  panel.innerHTML = '';
+
+  try {
+    const data = await apiFetch(`/api/clips/reddit-classics?offset=0`);
+    redditClassicsOffset = data.clips.length;
+    if (!data.clips || data.clips.length === 0) {
+      panel.innerHTML = `<div class="empty-state" style="padding:20px 0"><div class="empty-icon">🔴</div><div class="empty-text">No Reddit classics found</div></div>`;
+    } else {
+      data.clips.forEach(c => panel.appendChild(buildRedditClassicCard(c)));
+    }
+    redditClassicsLoaded = true;
+    spinner.classList.remove('active');
+  } catch(e) {
+    spinner.classList.remove('active');
+    btn.style.display = '';
+    showToast('Failed to load Reddit classics', 'error');
+  }
+}
+
+function buildRedditClassicCard(clip) {
+  const card = document.createElement('div');
+  card.className = 'reddit-classic-card';
+  const key = `reddit_${redditClipCounter++}`;
+  redditClipMap[key] = clip;
+  card.dataset.url = clip.url;
+  card.dataset.redditKey = key;
+
+  card.innerHTML = `
+    <div class="reddit-classic-subreddit">r/${escHtml(clip.subreddit)}</div>
+    <div class="reddit-classic-title">${escHtml(clip.title)}</div>
+    <div class="reddit-classic-meta">↑ ${clip.score ? clip.score.toLocaleString() : '0'} upvotes · ${escHtml(clip.created_date || '')}</div>
+    <div class="reddit-classic-actions">
+      <a class="btn btn-ghost btn-sm" href="${escHtml(clip.url)}" target="_blank" rel="noreferrer">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Preview
+      </a>
+      <button class="btn btn-primary btn-sm reddit-classic-save-btn" onclick="saveRedditClassicClip(this, '${key}')">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save to Library
+      </button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:rgba(239,68,68,.3)"
+        onclick="confirmHideRedditClassicClip('${key}', this.closest('.reddit-classic-card'))">
+        🚫 Don't Show Again
+      </button>
+    </div>
+  `;
+  return card;
+}
+
+async function saveRedditClassicClip(btnEl, key) {
+  const clip = redditClipMap[key];
+  if (!clip) { showToast('Clip not found', 'error'); return; }
+  btnEl.disabled = true;
+  btnEl.style.opacity = '.5';
+  try {
+    await apiFetch('/api/library/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title:     clip.title,
+        url:       clip.url,
+        source:    'reddit',
+        game_name: 'Valorant',
+        subreddit: clip.subreddit,
+        niche:     'valorant',
+      })
+    });
+    btnEl.replaceWith(Object.assign(document.createElement('span'), {
+      className: 'saved-badge', textContent: '✓ Saved'
+    }));
+    showToast('✅ Saved to Library!', 'success');
+    if (document.getElementById('section-library').classList.contains('active')) {
+      await loadLibrary();
+    }
+  } catch(e) {
+    btnEl.disabled = false;
+    btnEl.style.opacity = '1';
+    showToast('Failed to save clip', 'error');
+  }
+}
+
+function confirmHideRedditClassicClip(key, cardEl) {
+  const clip = redditClipMap[key];
+  if (!clip) return;
+  pendingHideClassicInfo = { type: 'reddit', url: clip.url, cardEl };
+  openModal('modal-hide-clip');
+}
+
+async function fetchReplacementRedditClassic() {
+  try {
+    const data = await apiFetch(`/api/clips/reddit-classics?offset=${redditClassicsOffset}`);
+    if (data.clips && data.clips.length > 0) {
+      redditClassicsOffset += 1;
+      const panel = document.getElementById('reddit-classics-panel');
+      if (panel) panel.appendChild(buildRedditClassicCard(data.clips[0]));
+    }
+  } catch(e) {
+    // silently ignore
   }
 }
 

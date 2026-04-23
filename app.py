@@ -25,6 +25,7 @@ try:
     from find_clips import (
         search_general_gaming, search_valorant,
         load_used_clips, fetch_valorant_classics,
+        fetch_valorant_reddit_classics,
     )
     CLIPS_AVAILABLE = True
 except Exception:
@@ -370,6 +371,18 @@ def api_clips_classics():
     if not CLIPS_AVAILABLE:
         return jsonify({'clips': [], 'total_fetched': 0})
     clips = fetch_valorant_classics(year, offset=offset, limit=10)
+    return jsonify({'clips': clips, 'total_fetched': offset + len(clips)})
+
+
+@app.route('/api/clips/reddit-classics')
+def api_clips_reddit_classics():
+    try:
+        offset = int(request.args.get('offset', 0))
+    except ValueError:
+        return jsonify({'error': 'Invalid params'}), 400
+    if not CLIPS_AVAILABLE:
+        return jsonify({'clips': [], 'total_fetched': 0})
+    clips = fetch_valorant_reddit_classics(offset=offset, limit=10)
     return jsonify({'clips': clips, 'total_fetched': offset + len(clips)})
 
 
